@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "167133589536",
+    "project_id": "ensemble-3ccfc",
+    "storage_bucket": "ensemble-3ccfc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167133589536:android:1469f0a51056f8fc5d4c45",
+        "android_client_info": {
+          "package_name": "com.example.bypass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2INVyHdg2_QNticQUAgy-hCjilqOUllc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167133589536:android:15891abec5dc3b205d4c45",
+        "android_client_info": {
+          "package_name": "com.example.ensemble"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2INVyHdg2_QNticQUAgy-hCjilqOUllc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167133589536:android:bba81e2b3100b23b5d4c45",
+        "android_client_info": {
+          "package_name": "com.walref.ensemble"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2INVyHdg2_QNticQUAgy-hCjilqOUllc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
