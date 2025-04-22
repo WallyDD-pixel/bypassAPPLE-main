@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../utils/date_formatter.dart';
 import '../../../groupes/create_group_form.dart';
 import '../../../groupes/list/groupes/rejoindre/join_group.dart';
@@ -10,6 +11,31 @@ class EventCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const EventCard({super.key, required this.event, required this.onTap});
+
+  Future<void> _createGroup(String eventId, int maxMen, int maxWomen) async {
+    try {
+      debugPrint('Début de la création du groupe...');
+      final groupRef = FirebaseFirestore.instance.collection('groups').doc();
+
+      // Calculer les places restantes initiales
+      final status =
+          'Il reste $maxMen place(s) pour les hommes et $maxWomen place(s) pour les femmes';
+
+      // Créer le groupe avec les valeurs initiales
+      await groupRef.set({
+        'eventId': eventId,
+        'maxMen': maxMen,
+        'maxWomen': maxWomen,
+        'members': {'men': [], 'women': []},
+        'createdBy': FirebaseAuth.instance.currentUser!.uid,
+        'status': status, // Champ "status" défini dès la création
+      });
+
+      debugPrint('Groupe créé avec succès avec le statut : $status');
+    } catch (e) {
+      debugPrint('Erreur lors de la création du groupe : $e');
+    }
+  }
 
   Widget _buildGroupsWidget() {
     return StreamBuilder<QuerySnapshot>(
@@ -233,7 +259,7 @@ class EventCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.calendar_today,
-                    color: Color.fromARGB(255, 0, 194, 6),
+                    color: Colors.green,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -254,7 +280,6 @@ class EventCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              // Remplacer la section Row existante par :
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 mainAxisSize: MainAxisSize.max,

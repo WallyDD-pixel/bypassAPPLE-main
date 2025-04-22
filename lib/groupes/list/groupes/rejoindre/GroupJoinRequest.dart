@@ -368,11 +368,15 @@ class GroupJoinRequest extends StatelessWidget {
                           const String currency = 'eur'; // Devise
 
                           // Créer un PaymentIntent avec pré-autorisation
+                          // Convertir le prix en centimes et en entier
                           final paymentIntent =
                               await StripeService.createPaymentIntent(
-                                amount.toString(),
-                                currency,
+                                (price * 100)
+                                    .toInt()
+                                    .toString(), // Convertir en centimes et en entier
+                                'eur', // Devise
                               );
+                          final paymentIntentId = paymentIntent['id'];
 
                           // Initialiser la feuille de paiement
                           await Stripe.instance.initPaymentSheet(
@@ -392,9 +396,12 @@ class GroupJoinRequest extends StatelessWidget {
                             groupId: groupId,
                             eventId: eventId,
                             creatorId: creatorId,
-                            price: price,
+                            price:
+                                price.toDouble(), // Convertir price en double
                             userId:
                                 userId, // Utiliser l'ID de l'utilisateur connecté
+                            paymentIntentId:
+                                paymentIntentId, // Ajouter le PaymentIntentId
                           );
 
                           // Afficher un message de succès et rediriger
@@ -483,26 +490,34 @@ class GroupJoinRequest extends StatelessWidget {
     required String groupId,
     required String eventId,
     required String creatorId,
-    required num price,
-    required String userId, // ID de l'utilisateur qui fait la demande
+    required double price,
+    required String userId,
+    required String paymentIntentId, // Nouveau paramètre
   }) async {
     try {
-      final requestData = {
+      final requestRef = FirebaseFirestore.instance
+          .collection('groupJoinRequests')
+          .doc(
+            '$groupId-$userId',
+          ); // Utiliser une clé unique pour identifier la demande
+
+      await requestRef.set({
         'groupId': groupId,
         'eventId': eventId,
         'creatorId': creatorId,
         'price': price,
         'userId': userId,
+        'paymentIntentId': paymentIntentId, // Enregistrer le PaymentIntentId
         'status': 'pending', // Statut initial de la demande
-        'createdAt': FieldValue.serverTimestamp(), // Date de création
-      };
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-      // Ajouter la demande dans Firestore
-      await FirebaseFirestore.instance
-          .collection('groupJoinRequests')
-          .add(requestData);
+      print(
+        'Demande enregistrée avec succès avec PaymentIntentId : $paymentIntentId',
+      );
     } catch (e) {
-      throw Exception('Erreur lors de la création de la demande : $e');
+      print('Erreur lors de l\'enregistrement de la demande : $e');
+      throw Exception('Erreur lors de l\'enregistrement de la demande : $e');
     }
   }
 }

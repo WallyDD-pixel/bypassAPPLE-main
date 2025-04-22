@@ -77,4 +77,23 @@ class StripeService {
       );
     }
   }
+
+  static Future<void> capturePayment(String paymentIntentId) async {
+    try {
+      final url =
+          '${StripeService.apiBase}/payment_intents/$paymentIntentId/capture';
+
+      final response = await http.post(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        print('Paiement capturé avec succès pour $paymentIntentId');
+      } else {
+        throw Exception(
+          'Erreur lors de la capture du paiement : ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Erreur lors de la capture du paiement : $e');
+    }
+  }
 }
