@@ -31,7 +31,7 @@ class _SearchBarState extends State<SearchBar> {
               .where('eventId', isEqualTo: 'someEventId')
               .orderBy('name')
               .startAt([query])
-              .endAt([query + '\uf8ff'])
+              .endAt(['$query\uf8ff'])
               .get();
 
       setState(() {

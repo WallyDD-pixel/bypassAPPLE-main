@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:ui';
 import 'GroupJoinRequest.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../couleur/background_widget.dart';
@@ -341,9 +340,9 @@ class _JoinGroupState extends State<JoinGroup> {
                                         if (snapshot.hasError ||
                                             !snapshot.hasData ||
                                             !snapshot.data!.exists) {
-                                          return const Text(
-                                            'Heure d\'arrivée inconnue',
-                                            style: TextStyle(
+                                          return Text(
+                                            'HEURE D\'ARRIVÉE INCONNUE',
+                                            style: GoogleFonts.poppins(
                                               color: Colors.red,
                                               fontSize: 14,
                                             ),
@@ -359,7 +358,7 @@ class _JoinGroupState extends State<JoinGroup> {
 
                                         if (arrivalTime == null) {
                                           return const Text(
-                                            'Heure d\'arrivée non définie',
+                                            'HEURE D\'ARRIVÉE NON DÉFINIE',
                                             style: TextStyle(
                                               color: Colors.grey,
                                               fontSize: 14,
@@ -373,15 +372,15 @@ class _JoinGroupState extends State<JoinGroup> {
                                             arrivalTime['minute'] as int? ?? 0;
 
                                         return Text(
-                                          'Heure d\'arrivée : ${hour.toString().padLeft(2, '0')}h${minute.toString().padLeft(2, '0')}',
+                                          'HEURE D\'ARRIVÉE : ${hour.toString().padLeft(2, '0')}h${minute.toString().padLeft(2, '0')}',
                                           style: GoogleFonts.poppins(
                                             color: const Color.fromARGB(
                                               255,
-                                              210,
-                                              210,
-                                              210,
+                                              255,
+                                              255,
+                                              255,
                                             ),
-                                            fontSize: 16,
+                                            fontSize: 22,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         );
@@ -399,6 +398,11 @@ class _JoinGroupState extends State<JoinGroup> {
                                               List.generate(data['maxMen'] as int, (
                                                 index,
                                               ) {
+                                                // Calculer la taille des bulles dynamiquement
+                                                final bubbleSize =
+                                                    data['maxMen'] > 3
+                                                        ? 30.0
+                                                        : 45.0; // Réduire la taille si plus de 3 bulles
                                                 if (index < menCount) {
                                                   final userId =
                                                       (members['men']
@@ -427,8 +431,8 @@ class _JoinGroupState extends State<JoinGroup> {
                                                             const EdgeInsets.symmetric(
                                                               horizontal: 4,
                                                             ),
-                                                        width: 45,
-                                                        height: 45,
+                                                        width: bubbleSize,
+                                                        height: bubbleSize,
                                                         decoration:
                                                             BoxDecoration(
                                                               color: Colors.blue
@@ -453,30 +457,51 @@ class _JoinGroupState extends State<JoinGroup> {
                                                                             .cover,
                                                                   ),
                                                                 )
-                                                                : const Icon(
-                                                                  Icons.person,
-                                                                  color:
-                                                                      Colors
-                                                                          .blue,
-                                                                  size: 20,
+                                                                : const Center(
+                                                                  child: Text(
+                                                                    '?',
+                                                                    style: TextStyle(
+                                                                      color:
+                                                                          Colors
+                                                                              .blue,
+                                                                      fontSize:
+                                                                          20, // Taille du point d'interrogation
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
                                                                 ),
                                                       );
                                                     },
                                                   );
                                                 } else {
+                                                  // Bulle vide avec un point d'interrogation
                                                   return Container(
                                                     margin:
                                                         const EdgeInsets.symmetric(
                                                           horizontal: 4,
                                                         ),
-                                                    width: 45,
-                                                    height: 45,
+                                                    width: bubbleSize,
+                                                    height: bubbleSize,
                                                     decoration: BoxDecoration(
                                                       color: Colors.transparent,
                                                       border: Border.all(
                                                         color: Colors.blue,
                                                       ),
                                                       shape: BoxShape.circle,
+                                                    ),
+                                                    child: const Center(
+                                                      child: Text(
+                                                        '?',
+                                                        style: TextStyle(
+                                                          color: Colors.blue,
+                                                          fontSize:
+                                                              20, // Taille du point d'interrogation
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
                                                     ),
                                                   );
                                                 }
@@ -485,81 +510,107 @@ class _JoinGroupState extends State<JoinGroup> {
 
                                         // Bulles pour les femmes (ordre normal)
                                         Row(
-                                          children: List.generate(
-                                            data['maxWomen'] as int,
-                                            (index) {
-                                              if (index < womenCount) {
-                                                final userId =
-                                                    (members['women']
-                                                        as List)[index];
-                                                return FutureBuilder<
-                                                  DocumentSnapshot
-                                                >(
-                                                  future:
-                                                      FirebaseFirestore.instance
-                                                          .collection('users')
-                                                          .doc(userId)
-                                                          .get(),
-                                                  builder: (context, snapshot) {
-                                                    final photoURL =
-                                                        (snapshot.data?.data()
-                                                            as Map<
-                                                              String,
-                                                              dynamic
-                                                            >?)?['photoURL'];
-                                                    return Container(
-                                                      margin:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                          ),
-                                                      width: 45,
-                                                      height: 45,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.pink
-                                                            .withOpacity(0.2),
-                                                        shape: BoxShape.circle,
-                                                        border: Border.all(
-                                                          color: Colors.pink,
+                                          children: List.generate(data['maxWomen'] as int, (
+                                            index,
+                                          ) {
+                                            // Calculer la taille des bulles dynamiquement
+                                            final bubbleSize =
+                                                data['maxWomen'] > 3
+                                                    ? 35.0
+                                                    : 45.0; // Réduire la taille si plus de 3 bulles
+                                            if (index < womenCount) {
+                                              final userId =
+                                                  (members['women']
+                                                      as List)[index];
+                                              return FutureBuilder<
+                                                DocumentSnapshot
+                                              >(
+                                                future:
+                                                    FirebaseFirestore.instance
+                                                        .collection('users')
+                                                        .doc(userId)
+                                                        .get(),
+                                                builder: (context, snapshot) {
+                                                  final photoURL =
+                                                      (snapshot.data?.data()
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >?)?['photoURL'];
+                                                  return Container(
+                                                    margin:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 4,
                                                         ),
+                                                    width: bubbleSize,
+                                                    height: bubbleSize,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.pink
+                                                          .withOpacity(0.2),
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color: Colors.pink,
                                                       ),
-                                                      child:
-                                                          photoURL != null
-                                                              ? ClipOval(
-                                                                child: Image.network(
-                                                                  photoURL,
-                                                                  fit:
-                                                                      BoxFit
-                                                                          .cover,
-                                                                ),
-                                                              )
-                                                              : const Icon(
-                                                                Icons.person,
-                                                                color:
-                                                                    Colors.pink,
-                                                                size: 20,
-                                                              ),
-                                                    );
-                                                  },
-                                                );
-                                              } else {
-                                                return Container(
-                                                  margin:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 4,
-                                                      ),
-                                                  width: 45,
-                                                  height: 45,
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.transparent,
-                                                    border: Border.all(
-                                                      color: Colors.pink,
                                                     ),
-                                                    shape: BoxShape.circle,
+                                                    child:
+                                                        photoURL != null
+                                                            ? ClipOval(
+                                                              child: Image.network(
+                                                                photoURL,
+                                                                fit:
+                                                                    BoxFit
+                                                                        .cover,
+                                                              ),
+                                                            )
+                                                            : const Center(
+                                                              child: Text(
+                                                                '?',
+                                                                style: TextStyle(
+                                                                  color:
+                                                                      Colors
+                                                                          .pink,
+                                                                  fontSize:
+                                                                      20, // Taille du point d'interrogation
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                  );
+                                                },
+                                              );
+                                            } else {
+                                              // Bulle vide avec un point d'interrogation
+                                              return Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                    ),
+                                                width: bubbleSize,
+                                                height: bubbleSize,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.transparent,
+                                                  border: Border.all(
+                                                    color: Colors.pink,
                                                   ),
-                                                );
-                                              }
-                                            },
-                                          ),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Center(
+                                                  child: Text(
+                                                    '?',
+                                                    style: TextStyle(
+                                                      color: Colors.pink,
+                                                      fontSize:
+                                                          20, // Taille du point d'interrogation
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }),
                                         ),
                                       ],
                                     ),
@@ -643,7 +694,7 @@ class _JoinGroupState extends State<JoinGroup> {
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               )
-                                              : TextButton.icon(
+                                              : OutlinedButton(
                                                 onPressed: () {
                                                   Navigator.of(context).push(
                                                     MaterialPageRoute(
@@ -664,14 +715,43 @@ class _JoinGroupState extends State<JoinGroup> {
                                                     ),
                                                   );
                                                 },
-                                                icon: const Icon(
-                                                  Icons.group_add,
-                                                  color: Colors.green,
+                                                style: OutlinedButton.styleFrom(
+                                                  side: const BorderSide(
+                                                    color: Color.fromARGB(
+                                                      255,
+                                                      240,
+                                                      240,
+                                                      240,
+                                                    ),
+                                                    width: 1.5,
+                                                  ), // Bordure verte
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 12,
+                                                        horizontal: 24,
+                                                      ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ), // Coins arrondis
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors
+                                                          .transparent, // Intérieur transparent
                                                 ),
-                                                label: Text(
-                                                  'Rejoindre',
+                                                child: Text(
+                                                  'REJOINDRE',
                                                   style: GoogleFonts.poppins(
-                                                    color: Colors.green,
+                                                    color: const Color.fromARGB(
+                                                      255,
+                                                      244,
+                                                      244,
+                                                      244,
+                                                    ), // Texte vert
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                    fontStyle: FontStyle.italic,
                                                   ),
                                                 ),
                                               );

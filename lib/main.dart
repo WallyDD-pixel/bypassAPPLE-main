@@ -1,4 +1,3 @@
-import 'package:bypass/paiement/const.dart';
 import 'package:bypass/paiement/stripe_payment_service.dart';
 import 'package:flutter/material.dart';
 import 'package:introduction_screen/introduction_screen.dart';
@@ -7,8 +6,6 @@ import 'firebase_options.dart';
 import 'home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
-import './groupes/list/groupes/rejoindre/join_group.dart';
 
 
 void main() async {

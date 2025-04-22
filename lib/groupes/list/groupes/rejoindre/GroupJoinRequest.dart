@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../paiement/stripe_payment_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bypass/groupes/list/groupes/rejoindre/join_group.dart';
+import '../rejoindre/Felicitation/succes.dart';
 
 class GroupJoinRequest extends StatelessWidget {
   final String groupId;
@@ -349,7 +350,7 @@ class GroupJoinRequest extends StatelessWidget {
                       onPressed: () async {
                         try {
                           // Vérifiez que la variable price est définie et non nulle
-                          if (price == null || price <= 0) {
+                          if (price <= 0) {
                             throw Exception(
                               "Le prix est invalide ou non défini.",
                             );
@@ -368,7 +369,6 @@ class GroupJoinRequest extends StatelessWidget {
                           const String currency = 'eur'; // Devise
 
                           // Créer un PaymentIntent avec pré-autorisation
-                          // Convertir le prix en centimes et en entier
                           final paymentIntent =
                               await StripeService.createPaymentIntent(
                                 (price * 100)
@@ -404,37 +404,36 @@ class GroupJoinRequest extends StatelessWidget {
                                 paymentIntentId, // Ajouter le PaymentIntentId
                           );
 
-                          // Afficher un message de succès et rediriger
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: const Text('Succès'),
-                                content: const Text(
-                                  'Votre demande a été créée avec succès ! Vous allez être redirigé vers la page des groupes.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(
-                                        context,
-                                      ).pop(); // Fermer le dialogue
-                                      Navigator.of(context).pushReplacement(
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) => JoinGroup(
-                                                eventId:
-                                                    eventId, // Passez l'argument requis ici
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text('OK'),
+                          // Récupérer les informations depuis Firebase
+                          final eventSnapshot =
+                              await FirebaseFirestore.instance
+                                  .collection('events')
+                                  .doc(eventId)
+                                  .get();
+                          final eventData =
+                              eventSnapshot.data();
+
+                          final location =
+                              eventData?['location'] ?? 'Lieu inconnu';
+                          final arrivalTime =
+                              eventData?['date'] != null
+                                  ? DateFormat('dd MMMM yyyy à HH:mm').format(
+                                    (eventData!['date'] as Timestamp).toDate(),
+                                  )
+                                  : 'Date inconnue';
+
+                          // Rediriger vers la page de félicitations avec les informations
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => PaymentSuccessPage(
+                                    location: location ?? 'Lieu inconnu',
+                                    arrivalTime:
+                                        arrivalTime ?? 'Heure inconnue',
+                                    groupId:
+                                        groupId, // Passez ici l'ID du groupe
                                   ),
-                                ],
-                              );
-                            },
+                            ),
                           );
                         } catch (e) {
                           // Afficher un message d'erreur

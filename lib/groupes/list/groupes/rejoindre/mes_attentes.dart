@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../../nav/custom_bottom_nav.dart';
 
 class MesAttentes extends StatefulWidget {
-  const MesAttentes({Key? key}) : super(key: key);
+  const MesAttentes({super.key});
 
   @override
   // ignore: library_private_types_in_public_api
@@ -17,7 +17,7 @@ class MesAttentes extends StatefulWidget {
 }
 
 class _MesAttentesState extends State<MesAttentes> {
-  int _selectedIndex = 3;
+  final int _selectedIndex = 3;
 
   Future<Map<String, dynamic>?> _fetchGroupDetails(String groupId) async {
     final groupSnapshot =
@@ -59,16 +59,42 @@ class _MesAttentesState extends State<MesAttentes> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Titre en haut à gauche
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Text(
-                    'MES DEMANDES EN ATTENTE', // Texte en majuscules
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 24,
-                      fontStyle: FontStyle.italic, // Texte en italique
-                      color: Colors.white, // Couleur blanche pour le texte
-                    ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(
+                    16,
+                    10,
+                    5,
+                    5,
+                  ), // Espacement pour l'AppBar
+                  decoration: const BoxDecoration(
+                    color: Colors.transparent, // Fond transparent
+                  ),
+                  child: Row(
+                    children: [
+                      // Bouton de retour
+                      IconButton(
+                        icon: const Icon(
+                          Icons.chevron_left, // Icône de retour élégante
+                          color: Colors.white, // Couleur blanche
+                        ),
+                        onPressed: () {
+                          Navigator.of(
+                            context,
+                          ).pop(); // Retour à la page précédente
+                        },
+                      ),
+                      // Texte de l'AppBar
+                      Text(
+                        'MES DEMANDES EN ATTENTE',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -327,6 +353,14 @@ class _MesAttentesState extends State<MesAttentes> {
                                                 children: List.generate(maxMen, (
                                                   index,
                                                 ) {
+                                                  // Calculer la taille des bulles dynamiquement
+                                                  final int totalBubbles =
+                                                      maxMen + maxWomen;
+                                                  final double bubbleSize =
+                                                      totalBubbles > 6
+                                                          ? 30.0
+                                                          : 40.0; // Réduire la taille si plus de 6 bulles
+
                                                   if (index < men.length) {
                                                     final userId = men[index];
                                                     return FutureBuilder<
@@ -361,8 +395,9 @@ class _MesAttentesState extends State<MesAttentes> {
                                                                     horizontal:
                                                                         2,
                                                                   ),
-                                                              width: 20,
-                                                              height: 20,
+                                                              width: bubbleSize,
+                                                              height:
+                                                                  bubbleSize,
                                                               decoration: BoxDecoration(
                                                                 color:
                                                                     Colors
@@ -387,8 +422,8 @@ class _MesAttentesState extends State<MesAttentes> {
                                                               const EdgeInsets.symmetric(
                                                                 horizontal: 2,
                                                               ),
-                                                          width: 20,
-                                                          height: 20,
+                                                          width: bubbleSize,
+                                                          height: bubbleSize,
                                                           decoration: BoxDecoration(
                                                             color: Colors.blue
                                                                 .withOpacity(
@@ -417,19 +452,21 @@ class _MesAttentesState extends State<MesAttentes> {
                                                                     color:
                                                                         Colors
                                                                             .blue,
-                                                                    size: 12,
+                                                                    size:
+                                                                        20, // Taille de l'icône
                                                                   ),
                                                         );
                                                       },
                                                     );
                                                   } else {
+                                                    // Bulle vide avec un point d'interrogation
                                                     return Container(
                                                       margin:
                                                           const EdgeInsets.symmetric(
                                                             horizontal: 2,
                                                           ),
-                                                      width: 20,
-                                                      height: 20,
+                                                      width: bubbleSize,
+                                                      height: bubbleSize,
                                                       decoration: BoxDecoration(
                                                         color:
                                                             Colors.transparent,
@@ -437,6 +474,18 @@ class _MesAttentesState extends State<MesAttentes> {
                                                           color: Colors.blue,
                                                         ),
                                                         shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Center(
+                                                        child: Text(
+                                                          '?',
+                                                          style: TextStyle(
+                                                            color: Colors.blue,
+                                                            fontSize:
+                                                                20, // Taille du point d'interrogation
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
                                                       ),
                                                     );
                                                   }
@@ -449,6 +498,14 @@ class _MesAttentesState extends State<MesAttentes> {
                                                 children: List.generate(maxWomen, (
                                                   index,
                                                 ) {
+                                                  // Calculer la taille des bulles dynamiquement
+                                                  final int totalBubbles =
+                                                      maxMen + maxWomen;
+                                                  final double bubbleSize =
+                                                      totalBubbles > 6
+                                                          ? 30.0
+                                                          : 40.0; // Réduire la taille si plus de 6 bulles
+
                                                   if (index < women.length) {
                                                     final userId = women[index];
                                                     return FutureBuilder<
@@ -483,8 +540,9 @@ class _MesAttentesState extends State<MesAttentes> {
                                                                     horizontal:
                                                                         2,
                                                                   ),
-                                                              width: 20,
-                                                              height: 20,
+                                                              width: bubbleSize,
+                                                              height:
+                                                                  bubbleSize,
                                                               decoration: BoxDecoration(
                                                                 color:
                                                                     Colors
@@ -509,17 +567,18 @@ class _MesAttentesState extends State<MesAttentes> {
                                                               const EdgeInsets.symmetric(
                                                                 horizontal: 2,
                                                               ),
-                                                          width: 20,
-                                                          height: 20,
+                                                          width: bubbleSize,
+                                                          height: bubbleSize,
                                                           decoration: BoxDecoration(
-                                                            color: Colors.red
+                                                            color: Colors.pink
                                                                 .withOpacity(
                                                                   0.2,
                                                                 ),
                                                             shape:
                                                                 BoxShape.circle,
                                                             border: Border.all(
-                                                              color: Colors.red,
+                                                              color:
+                                                                  Colors.pink,
                                                             ),
                                                           ),
                                                           child:
@@ -537,27 +596,41 @@ class _MesAttentesState extends State<MesAttentes> {
                                                                         .person,
                                                                     color:
                                                                         Colors
-                                                                            .red,
-                                                                    size: 12,
+                                                                            .pink,
+                                                                    size:
+                                                                        20, // Taille de l'icône
                                                                   ),
                                                         );
                                                       },
                                                     );
                                                   } else {
+                                                    // Bulle vide avec un point d'interrogation
                                                     return Container(
                                                       margin:
                                                           const EdgeInsets.symmetric(
                                                             horizontal: 2,
                                                           ),
-                                                      width: 20,
-                                                      height: 20,
+                                                      width: bubbleSize,
+                                                      height: bubbleSize,
                                                       decoration: BoxDecoration(
                                                         color:
                                                             Colors.transparent,
                                                         border: Border.all(
-                                                          color: Colors.red,
+                                                          color: Colors.pink,
                                                         ),
                                                         shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Center(
+                                                        child: Text(
+                                                          '?',
+                                                          style: TextStyle(
+                                                            color: Colors.pink,
+                                                            fontSize:
+                                                                20, // Taille du point d'interrogation
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
                                                       ),
                                                     );
                                                   }
@@ -592,14 +665,6 @@ class _MesAttentesState extends State<MesAttentes> {
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: CustomBottomNav(
-        selectedIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
       ),
     );
   }

@@ -265,7 +265,9 @@ class EventCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     DateFormatter.formatDate(event['date']),
-                    style: const TextStyle(color: Colors.white70),
+                    style: const TextStyle(
+                      color: Color.fromARGB(255, 255, 255, 255),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   const Icon(Icons.location_on, color: Colors.green, size: 16),
@@ -307,38 +309,76 @@ class EventCard extends StatelessWidget {
 
                       final hasGroups = (snapshot.data?.docs.length ?? 0) > 0;
 
-                      return Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        child: TextButton.icon(
-                          onPressed:
-                              () =>
+                      return Row(
+                        children: [
+                          // Bouton "Créer"
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            child: OutlinedButton(
+                              onPressed: () => _navigateToCreateGroup(context),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                backgroundColor: Colors.transparent,
+                              ),
+                              child: const Text(
+                                'CRÉER',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(
+                            width: 8,
+                          ), // Espacement entre les boutons
+                          // Bouton "Rejoindre"
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            child: OutlinedButton(
+                              onPressed:
                                   hasGroups
-                                      ? _navigateToGroupsList(context)
-                                      : _navigateToCreateGroup(context),
-                          style: TextButton.styleFrom(
-                            backgroundColor: Colors.green.withOpacity(0.1),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                                      ? () => _navigateToGroupsList(context)
+                                      : null, // Désactiver si aucun groupe
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                backgroundColor: Colors.transparent,
+                              ),
+                              child: const Text(
+                                'REJOINDRE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
                             ),
                           ),
-                          icon: Icon(
-                            hasGroups ? Icons.group : Icons.group_add,
-                            color: Colors.green,
-                            size: 18,
-                          ),
-                          label: Text(
-                            hasGroups ? 'Rejoindre' : 'Créer',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        ],
                       );
                     },
                   ),

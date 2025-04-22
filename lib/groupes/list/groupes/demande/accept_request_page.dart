@@ -11,12 +11,12 @@ class AcceptRequestPage extends StatefulWidget {
   final double price;
 
   const AcceptRequestPage({
-    Key? key,
+    super.key,
     required this.requestId,
     required this.userId,
     required this.groupId,
     required this.price,
-  }) : super(key: key);
+  });
 
   @override
   _AcceptRequestPageState createState() => _AcceptRequestPageState();
@@ -145,7 +145,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
   }
 
   bool _isChecked = false; // État de la checkbox
-  int _selectedIndex = 0; // Index de la barre de navigation
+  final int _selectedIndex = 0; // Index de la barre de navigation
 
   @override
   Widget build(BuildContext context) {
@@ -487,7 +487,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
 
 // Page des conditions générales (à personnaliser)
 class TermsAndConditionsPage extends StatelessWidget {
-  const TermsAndConditionsPage({Key? key}) : super(key: key);
+  const TermsAndConditionsPage({super.key});
 
   @override
   Widget build(BuildContext context) {

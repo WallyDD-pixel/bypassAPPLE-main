@@ -9,7 +9,7 @@ import '../../../../couleur/background_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class MonGroupe extends StatefulWidget {
-  const MonGroupe({Key? key}) : super(key: key);
+  const MonGroupe({super.key});
 
   @override
   State<MonGroupe> createState() => _MonGroupeState();
@@ -299,47 +299,41 @@ class _MonGroupeState extends State<MonGroupe> {
                                               Text(
                                                 '${firstRequestData['price']}€',
                                                 style: const TextStyle(
-                                                  color: Colors.green,
-                                                  fontSize: 14,
+                                                  color: Color.fromARGB(
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    255,
+                                                  ),
+                                                  fontSize: 30,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 2),
-
-                                          // Lieu avec icône
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.location_on,
-                                                color: Colors.grey,
-                                                size: 14,
-                                              ),
-                                              const SizedBox(width: 1),
-                                              Text(
-                                                '${eventDetails['location'] ?? 'Lieu inconnu'}',
-                                                style: const TextStyle(
-                                                  color: Colors.grey,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 1),
 
                                           // Statut
                                           Text(
                                             'Statut : ${groupDetails['status'] ?? 'Statut inconnu'}',
-                                            style: TextStyle(
+                                            style: GoogleFonts.poppins(
                                               color:
                                                   groupDetails['status'] ==
                                                           'pending'
                                                       ? Colors.orange
-                                                      : Colors.green,
-                                              fontSize: 14,
+                                                      : const Color.fromARGB(
+                                                        255,
+                                                        255,
+                                                        255,
+                                                        255,
+                                                      ),
+                                              fontSize: 12,
+                                              fontWeight:
+                                                  FontWeight
+                                                      .w500, // Poids de la police (optionnel)
                                             ),
                                           ),
+                                          const SizedBox(height: 8),
+
                                           Row(
                                             children: [
                                               // Bulles pour les hommes
@@ -347,6 +341,10 @@ class _MonGroupeState extends State<MonGroupe> {
                                                 children: List.generate(maxMen, (
                                                   index,
                                                 ) {
+                                                  final bubbleSize =
+                                                      maxMen > 3
+                                                          ? 40.0
+                                                          : 50.0; // Réduire la taille si plus de 3 bulles
                                                   if (index < menCount) {
                                                     final userId = men[index];
                                                     return FutureBuilder<
@@ -381,8 +379,9 @@ class _MonGroupeState extends State<MonGroupe> {
                                                                     horizontal:
                                                                         2,
                                                                   ),
-                                                              width: 20,
-                                                              height: 20,
+                                                              width: bubbleSize,
+                                                              height:
+                                                                  bubbleSize,
                                                               decoration: BoxDecoration(
                                                                 color:
                                                                     Colors
@@ -407,8 +406,8 @@ class _MonGroupeState extends State<MonGroupe> {
                                                               const EdgeInsets.symmetric(
                                                                 horizontal: 2,
                                                               ),
-                                                          width: 20,
-                                                          height: 20,
+                                                          width: bubbleSize,
+                                                          height: bubbleSize,
                                                           decoration: BoxDecoration(
                                                             color: Colors.blue
                                                                 .withOpacity(
@@ -431,25 +430,31 @@ class _MonGroupeState extends State<MonGroupe> {
                                                                               .cover,
                                                                     ),
                                                                   )
-                                                                  : const Icon(
-                                                                    Icons
-                                                                        .person,
-                                                                    color:
-                                                                        Colors
-                                                                            .blue,
-                                                                    size: 12,
+                                                                  : const Center(
+                                                                    child: Text(
+                                                                      '?',
+                                                                      style: TextStyle(
+                                                                        color:
+                                                                            Colors.blue,
+                                                                        fontSize:
+                                                                            20, // Taille du point d'interrogation
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                      ),
+                                                                    ),
                                                                   ),
                                                         );
                                                       },
                                                     );
                                                   } else {
+                                                    // Bulle vide avec un point d'interrogation
                                                     return Container(
                                                       margin:
                                                           const EdgeInsets.symmetric(
                                                             horizontal: 2,
                                                           ),
-                                                      width: 20,
-                                                      height: 20,
+                                                      width: bubbleSize,
+                                                      height: bubbleSize,
                                                       decoration: BoxDecoration(
                                                         color:
                                                             Colors.transparent,
@@ -457,6 +462,18 @@ class _MonGroupeState extends State<MonGroupe> {
                                                           color: Colors.blue,
                                                         ),
                                                         shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Center(
+                                                        child: Text(
+                                                          '?',
+                                                          style: TextStyle(
+                                                            color: Colors.blue,
+                                                            fontSize:
+                                                                20, // Taille du point d'interrogation
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
                                                       ),
                                                     );
                                                   }
@@ -469,6 +486,10 @@ class _MonGroupeState extends State<MonGroupe> {
                                                 children: List.generate(maxWomen, (
                                                   index,
                                                 ) {
+                                                  final bubbleSize =
+                                                      maxWomen > 3
+                                                          ? 40.0
+                                                          : 50.0; // Réduire la taille si plus de 3 bulles
                                                   if (index < womenCount) {
                                                     final userId = women[index];
                                                     return FutureBuilder<
@@ -498,17 +519,18 @@ class _MonGroupeState extends State<MonGroupe> {
                                                               const EdgeInsets.symmetric(
                                                                 horizontal: 2,
                                                               ),
-                                                          width: 20,
-                                                          height: 20,
+                                                          width: bubbleSize,
+                                                          height: bubbleSize,
                                                           decoration: BoxDecoration(
-                                                            color: Colors.red
+                                                            color: Colors.pink
                                                                 .withOpacity(
                                                                   0.2,
                                                                 ),
                                                             shape:
                                                                 BoxShape.circle,
                                                             border: Border.all(
-                                                              color: Colors.red,
+                                                              color:
+                                                                  Colors.pink,
                                                             ),
                                                           ),
                                                           child:
@@ -521,32 +543,50 @@ class _MonGroupeState extends State<MonGroupe> {
                                                                               .cover,
                                                                     ),
                                                                   )
-                                                                  : const Icon(
-                                                                    Icons
-                                                                        .person,
-                                                                    color:
-                                                                        Colors
-                                                                            .red,
-                                                                    size: 12,
+                                                                  : const Center(
+                                                                    child: Text(
+                                                                      '?',
+                                                                      style: TextStyle(
+                                                                        color:
+                                                                            Colors.pink,
+                                                                        fontSize:
+                                                                            20, // Taille du point d'interrogation
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                      ),
+                                                                    ),
                                                                   ),
                                                         );
                                                       },
                                                     );
                                                   } else {
+                                                    // Bulle vide avec un point d'interrogation
                                                     return Container(
                                                       margin:
                                                           const EdgeInsets.symmetric(
                                                             horizontal: 2,
                                                           ),
-                                                      width: 20,
-                                                      height: 20,
+                                                      width: bubbleSize,
+                                                      height: bubbleSize,
                                                       decoration: BoxDecoration(
                                                         color:
                                                             Colors.transparent,
                                                         border: Border.all(
-                                                          color: Colors.red,
+                                                          color: Colors.pink,
                                                         ),
                                                         shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Center(
+                                                        child: Text(
+                                                          '?',
+                                                          style: TextStyle(
+                                                            color: Colors.pink,
+                                                            fontSize:
+                                                                20, // Taille du point d'interrogation
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
                                                       ),
                                                     );
                                                   }

@@ -8,14 +8,14 @@ import 'mon_groupe.dart';
 import 'mes_attentes.dart';
 
 class Passerel extends StatefulWidget {
-  const Passerel({Key? key}) : super(key: key);
+  const Passerel({super.key});
 
   @override
   _PasserelState createState() => _PasserelState();
 }
 
 class _PasserelState extends State<Passerel> {
-  int _selectedIndex =
+  final int _selectedIndex =
       3; // Définir _selectedIndex pour gérer l'état de la navigation
 
   @override

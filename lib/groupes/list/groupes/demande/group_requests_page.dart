@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 class GroupRequestsPage extends StatelessWidget {
   final String groupId;
 
-  const GroupRequestsPage({Key? key, required this.groupId}) : super(key: key);
+  const GroupRequestsPage({super.key, required this.groupId});
 
   Future<void> _acceptRequest(String requestId, String userId) async {
     try {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'list/event_groups_list.dart';
 import './list/groupes/widgets/group_bubble.dart';
 import './list/groupes/widgets/more_groups_bubble.dart';
 

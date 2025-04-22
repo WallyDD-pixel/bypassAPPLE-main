@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'profile_page.dart';
 import '../groupes/list/groupes/rejoindre/passerel.dart'; // Import de la nouvelle page
 import '../home_page.dart'; // Import de la page Home
+import '../Chat/messagerie/messages_page.dart';
 
 class CustomBottomNav extends StatelessWidget {
   final int selectedIndex;
@@ -49,6 +50,13 @@ class CustomBottomNav extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => const HomePage()),
                   );
+                } else if (index == 1) {
+                  // Rediriger vers la page Messages
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const MessagesPage(),
+                    ),
+                  );
                 } else if (index == 4) {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -79,7 +87,7 @@ class CustomBottomNav extends StatelessWidget {
               unselectedLabelStyle: const TextStyle(height: 1.5),
               items: [
                 _buildNavItem(Icons.home_rounded, 'Accueil', 0),
-                _buildNavItem(Icons.search_rounded, 'Recherche', 1),
+                _buildNavItem(Icons.message, 'Messages', 1),
                 _buildNavItem(Icons.add_circle_rounded, 'Ajouter', 2),
                 _buildNavItem(
                   Icons.group_rounded,

@@ -290,23 +290,35 @@ class _CreateGroupDetailsPageState extends State<CreateGroupDetailsPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw 'Vous devez être connecté pour créer un groupe';
 
-      await FirebaseFirestore.instance.collection('groups').add({
-        'eventId': widget.eventId,
+      // Créer le groupe
+      final groupRef = await FirebaseFirestore.instance
+          .collection('groups')
+          .add({
+            'eventId': widget.eventId,
+            'createdBy': user.uid,
+            'createdAt': FieldValue.serverTimestamp(),
+            'arrivalTime': {
+              'hour': _selectedTime.hour,
+              'minute': _selectedTime.minute,
+            },
+            'maxWomen': widget.maxWomen,
+            'maxMen': widget.maxWomen,
+            'totalCapacity': widget.maxWomen * 2,
+            'price': _price,
+            'currency': 'EUR',
+            'members': {
+              'women': [user.uid],
+              'men': [],
+            },
+          });
+
+      // Créer le chat associé au groupe
+      await FirebaseFirestore.instance.collection('chats').doc(groupRef.id).set({
+        'groupId': groupRef.id,
         'createdBy': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
-        'arrivalTime': {
-          'hour': _selectedTime.hour,
-          'minute': _selectedTime.minute,
-        },
-        'maxWomen': widget.maxWomen,
-        'maxMen': widget.maxWomen,
-        'totalCapacity': widget.maxWomen * 2,
-        'price': _price,
-        'currency': 'EUR',
-        'members': {
-          'women': [user.uid],
-          'men': [],
-        },
+        'messages':
+            [], // Vous pouvez initialiser avec une liste vide ou ne pas inclure ce champ
       });
 
       if (mounted) {
@@ -314,7 +326,7 @@ class _CreateGroupDetailsPageState extends State<CreateGroupDetailsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Groupe créé avec succès',
+              'Groupe et chat créés avec succès',
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: Colors.green,
