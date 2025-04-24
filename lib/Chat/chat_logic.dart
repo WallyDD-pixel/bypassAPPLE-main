@@ -49,16 +49,75 @@ class ChatLogic extends ChangeNotifier {
 
       if (groupDoc.exists) {
         final groupData = groupDoc.data() as Map<String, dynamic>;
-        creatorName = groupData['createdBy'] ?? 'Inconnu';
+
+        // Récupérer l'ID du créateur
+        final creatorId = groupData['createdBy'];
+
+        // Récupérer le nom d'utilisateur du créateur
+        if (creatorId != null) {
+          final userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(creatorId)
+                  .get();
+
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            creatorName =
+                userData['username'] ?? 'Inconnu'; // Nom d'utilisateur
+          } else {
+            creatorName = 'Inconnu';
+          }
+        } else {
+          creatorName = 'Inconnu';
+        }
+
+        // Récupérer la photo du créateur
         creatorPhotoUrl = groupData['photoURL'];
-        final members = groupData['members'] as List<dynamic>? ?? [];
-        memberCount = members.length; // Calculer le nombre de membres
+
+        // Calculer le nombre de membres à partir du tableau "participants"
+        final participants = groupData['participants'] as List<dynamic>? ?? [];
+
+        // Ajouter le créateur au tableau des participants s'il n'est pas déjà inclus
+        if (creatorId != null && !participants.contains(creatorId)) {
+          participants.add(creatorId);
+        }
+
+        // Mettre à jour le nombre total de membres
+        memberCount = participants.length;
       }
     } catch (e) {
       debugPrint('Erreur lors du chargement des informations du groupe : $e');
     } finally {
       if (!_isDisposed) notifyListeners();
     }
+  }
+
+  Future<bool> isUserParticipant() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        debugPrint('Aucun utilisateur connecté.');
+        return false;
+      }
+
+      final chatDoc =
+          await FirebaseFirestore.instance
+              .collection('chats')
+              .doc(groupId)
+              .get();
+
+      if (chatDoc.exists) {
+        final chatData = chatDoc.data() as Map<String, dynamic>;
+        final participants = chatData['participants'] as List<dynamic>? ?? [];
+
+        // Vérifiez si l'utilisateur est dans la liste des participants
+        return participants.contains(currentUser.uid);
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la vérification des participants : $e');
+    }
+    return false;
   }
 
   Future<void> _loadInitialMessages() async {
@@ -81,6 +140,46 @@ class ChatLogic extends ChangeNotifier {
       if (!_isDisposed) notifyListeners();
     } catch (e) {
       debugPrint('Erreur lors du chargement des messages initiaux : $e');
+    }
+  }
+
+  Future<String> getCreatorName(String groupId) async {
+    try {
+      // Récupérer le document du groupe
+      final chatDoc =
+          await FirebaseFirestore.instance
+              .collection('chats')
+              .doc(groupId)
+              .get();
+
+      if (chatDoc.exists) {
+        final chatData = chatDoc.data() as Map<String, dynamic>;
+
+        // Vérifiez si le champ "createdBy" existe
+        final creatorId = chatData['createdBy'] ?? '';
+        if (creatorId.isEmpty) {
+          return 'Créateur inconnu';
+        }
+
+        // Récupérer le document utilisateur correspondant
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(creatorId)
+                .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          return userData['username'] ?? 'Utilisateur inconnu';
+        } else {
+          return 'Créateur introuvable';
+        }
+      } else {
+        return 'Groupe introuvable';
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la récupération du nom du créateur : $e');
+      return 'Erreur';
     }
   }
 
@@ -134,8 +233,9 @@ class ChatLogic extends ChangeNotifier {
                 currentUser.uid, // Utiliser l'ID de l'utilisateur connecté
             'senderName':
                 currentUser.displayName ??
-                'Utilisateur', // Nom de l'utilisateur (optionnel)
+                'Utilisateur', // Nom de l'utilisateur
             'timestamp': FieldValue.serverTimestamp(),
+            'isRead': false, // Initialiser à non lu
           })
           .then((_) {
             if (!_isDisposed) {

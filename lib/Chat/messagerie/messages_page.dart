@@ -35,7 +35,7 @@ class MessagesPage extends StatelessWidget {
           body: Stack(
             children: [
               // Arrière-plan
-              const BackgroundWidget(), // Ajout de l'arrière-plan
+              const BackgroundWidget(),
               // Contenu principal
               Consumer<MessagesLogic>(
                 builder: (context, logic, child) {
@@ -52,8 +52,28 @@ class MessagesPage extends StatelessWidget {
                           : Container(
                             width: double.infinity,
                             padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
-                            decoration: const BoxDecoration(
-                              color: Colors.transparent, // Fond transparent
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(
+                                22,
+                                0,
+                                0,
+                                0,
+                              ).withOpacity(0.7), // Fond semi-transparent
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(
+                                  30,
+                                ), // Bordures arrondies en bas
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 10,
+                                  offset: const Offset(
+                                    0,
+                                    5,
+                                  ), // Ombre sous l'AppBar
+                                ),
+                              ],
                             ),
                             child: Column(
                               children: [
@@ -73,20 +93,25 @@ class MessagesPage extends StatelessWidget {
                                               ? const Icon(
                                                 Icons.person,
                                                 color: Colors.white,
-                                                size: 60, // Taille de l'icône
+                                                size: 60,
                                               )
-                                              : null, // Taille de l'image agrandie
+                                              : null,
                                     ),
                                     const SizedBox(width: 15),
                                     // Nom de l'utilisateur
-                                    Text(
-                                      (logic.username ?? 'Utilisateur')
-                                          .toUpperCase(), // Convertir en majuscules
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 24, // Taille spécifique
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FontStyle.italic, // Italique
+                                    Expanded(
+                                      child: Text(
+                                        (logic.username ?? 'Utilisateur')
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                        overflow:
+                                            TextOverflow
+                                                .ellipsis, // Gestion du débordement
                                       ),
                                     ),
                                   ],
@@ -95,8 +120,13 @@ class MessagesPage extends StatelessWidget {
                                 // TabBar pour les deux listes
                                 const TabBar(
                                   indicatorColor: Colors.green,
+                                  indicatorWeight: 3,
                                   labelColor: Colors.white,
                                   unselectedLabelColor: Colors.grey,
+                                  labelStyle: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                   tabs: [
                                     Tab(text: 'Mes Groupes'),
                                     Tab(text: 'Mes Demandes'),
@@ -105,15 +135,28 @@ class MessagesPage extends StatelessWidget {
                               ],
                             ),
                           ),
+                      const SizedBox(height: 10),
                       // Contenu des onglets
                       Expanded(
-                        child: TabBarView(
-                          children: [
-                            // Liste des messages de "Mes Groupes"
-                            _buildGroupMessages(logic),
-                            // Liste des messages de "Mes Demandes"
-                            _buildRequestMessages(logic),
-                          ],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(
+                              0.6,
+                            ), // Fond semi-transparent
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(
+                                40,
+                              ), // Bordures arrondies en haut
+                            ),
+                          ),
+                          child: TabBarView(
+                            children: [
+                              // Liste des messages de "Mes Groupes"
+                              _buildGroupCard(logic),
+                              // Liste des messages de "Mes Demandes"
+                              _buildRequestCard(logic),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -127,86 +170,40 @@ class MessagesPage extends StatelessWidget {
     );
   }
 
-  // Liste des messages de "Mes Demandes"
-  Widget _buildRequestMessages(MessagesLogic logic) {
-    return StreamBuilder<QuerySnapshot>(
-      stream:
-          FirebaseFirestore.instance
-              .collection('requests') // Collection des demandes
-              .where(
-                'requesterId',
-                isEqualTo: logic.userId,
-              ) // Filtrer par utilisateur connecté
-              .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text(
-              'Aucune demande en attente.',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          );
-        }
-
-        final requests = snapshot.data!.docs;
-
-        return ListView.builder(
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final request = requests[index];
-            final groupId = request['groupId'] ?? 'Inconnu';
-            final createdAt = request['createdAt'] as Timestamp?;
-            final status = request['status'] ?? 'En attente';
-
-            return ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.person_add, color: Colors.white),
-              ),
-              title: Text(
-                'Groupe ID: $groupId',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
-              ),
-              subtitle: Text(
-                createdAt != null
-                    ? _formatTimestamp(createdAt)
-                    : 'Date inconnue',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              trailing: Text(
-                status,
-                style: TextStyle(
-                  color: status == 'Accepté' ? Colors.green : Colors.orange,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        );
-      },
+  // Card contenant la liste des groupes
+  Widget _buildGroupCard(MessagesLogic logic) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 8), // Réduction de l'espace au-dessus
+          Expanded(child: _buildGroupMessages(logic)),
+        ],
+      ),
     );
   }
 
-  // Liste des messages de "Mes Demandes"
+  // Card contenant la liste des demandes
+  Widget _buildRequestCard(MessagesLogic logic) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0), // Espacement autour du contenu
+      child: Column(
+        children: [
+          const SizedBox(height: 8), // Réduction de l'espace au-dessus
+          Expanded(child: _buildRequestMessages(logic)),
+        ],
+      ),
+    );
+  }
+
+  // Liste des messages de "Mes Groupes"
   Widget _buildGroupMessages(MessagesLogic logic) {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
-              .collection('chats') // Collection des groupes
-              .where(
-                'createdBy',
-                isEqualTo: logic.userId,
-              ) // Filtrer par utilisateur connecté
-              .snapshots(),
+              .collection('chats')
+              .where('createdBy', isEqualTo: logic.userId)
+              .snapshots(), // Écoute en temps réel
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -225,36 +222,398 @@ class MessagesPage extends StatelessWidget {
 
         return ListView.builder(
           itemCount: groups.length,
+          padding: const EdgeInsets.all(8.0),
           itemBuilder: (context, index) {
             final group = groups[index];
             final groupId = group['groupId'] ?? 'Inconnu';
             final createdAt = group['createdAt'] as Timestamp?;
+            final creatorId = group['createdBy'] ?? 'Inconnu';
 
-            return ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.green,
-                child: Icon(Icons.group, color: Colors.white),
-              ),
-              title: Text(
-                'Groupe ID: $groupId',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
-              ),
-              subtitle: Text(
-                createdAt != null
-                    ? _formatTimestamp(createdAt)
-                    : 'Date inconnue',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              onTap: () {
-                // Naviguer vers la page de chat associée au groupe
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatView(groupId: groupId),
+            return StreamBuilder<DocumentSnapshot>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(creatorId)
+                      .snapshots(), // Écoute en temps réel pour les données utilisateur
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child: Icon(Icons.group, color: Colors.white),
+                    ),
+                    title: const Text('Créateur inconnu'),
+                    subtitle: Text(
+                      createdAt != null
+                          ? _formatTimestamp(createdAt)
+                          : 'Date inconnue',
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatView(groupId: groupId),
+                        ),
+                      );
+                    },
+                  );
+                }
+
+                final userData =
+                    userSnapshot.data!.data() as Map<String, dynamic>;
+                final creatorName =
+                    userData['username'] ?? 'Utilisateur inconnu';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Card(
+                    color: Colors.transparent,
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 12.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(
+                        color: Colors.white,
+                        width: 1.0,
+                      ), // Contour blanc
+                    ),
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(groupId)
+                              .collection('messages')
+                              .where(
+                                'isRead',
+                                isEqualTo: false,
+                              ) // Messages non lus
+                              .snapshots(),
+                      builder: (context, unreadSnapshot) {
+                        int unreadCount = 0;
+                        if (unreadSnapshot.hasData) {
+                          unreadCount = unreadSnapshot.data!.docs.length;
+                        }
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.all(16.0),
+                          leading: Stack(
+                            children: [
+                              const CircleAvatar(
+                                backgroundColor: Colors.green,
+                                child: Icon(Icons.group, color: Colors.white),
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4.0),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'GROUPE DE $creatorName'.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  fontFamily: 'Poppins',
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              Text(
+                                createdAt != null
+                                    ? _formatTimestamp(createdAt).split(' ')[1]
+                                    : 'Heure inconnue',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: StreamBuilder<QuerySnapshot>(
+                            stream:
+                                FirebaseFirestore.instance
+                                    .collection('chats')
+                                    .doc(groupId)
+                                    .collection('messages')
+                                    .orderBy('timestamp', descending: true)
+                                    .limit(1)
+                                    .snapshots(), // Écoute en temps réel pour les messages
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Text(
+                                  'Chargement...',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                );
+                              }
+
+                              if (!snapshot.hasData ||
+                                  snapshot.data!.docs.isEmpty) {
+                                return const Text(
+                                  'Aucun message',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                );
+                              }
+
+                              final lastMessageData =
+                                  snapshot.data!.docs.first.data()
+                                      as Map<String, dynamic>;
+                              final senderName =
+                                  lastMessageData['senderName'] ?? 'Inconnu';
+                              final text =
+                                  lastMessageData['text'] ?? 'Message vide';
+                              final timestamp =
+                                  lastMessageData['timestamp'] as Timestamp?;
+
+                              final formattedTime =
+                                  timestamp != null
+                                      ? '${timestamp.toDate().hour}:${timestamp.toDate().minute.toString().padLeft(2, '0')}'
+                                      : 'Heure inconnue';
+
+                              return Text(
+                                '$senderName : $text\n$formattedTime',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              );
+                            },
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => ChatView(groupId: groupId),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Liste des messages de "Mes Demandes"
+  Widget _buildRequestMessages(MessagesLogic logic) {
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('chats')
+              .where('participants', arrayContains: logic.userId)
+              .snapshots(), // Écoute en temps réel
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Aucune conversation trouvée.',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          );
+        }
+
+        final chats = snapshot.data!.docs;
+
+        return ListView.builder(
+          itemCount: chats.length,
+          padding: const EdgeInsets.all(8.0),
+          itemBuilder: (context, index) {
+            final chat = chats[index];
+            final groupId = chat['groupId'] ?? 'Inconnu';
+            final createdAt = chat['createdAt'] as Timestamp?;
+            final creatorId = chat['createdBy'] ?? 'Inconnu';
+
+            return StreamBuilder<DocumentSnapshot>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(creatorId)
+                      .snapshots(), // Écoute en temps réel pour les données utilisateur
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                  return Card(
+                    color: Colors.transparent,
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(
+                        color: Colors.white,
+                        width: 1.0,
+                      ), // Contour blanc
+                    ),
+                    child: ListTile(
+                      title: const Text('Créateur inconnu'),
+                      subtitle: Text(
+                        createdAt != null
+                            ? _formatTimestamp(createdAt)
+                            : 'Date inconnue',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatView(groupId: groupId),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }
+
+                final userData =
+                    userSnapshot.data!.data() as Map<String, dynamic>;
+                final creatorName =
+                    userData['username'] ?? 'Utilisateur inconnu';
+
+                return Card(
+                  color: Colors.transparent, // Fond transparent
+                  elevation: 2, // Légère ombre pour un effet visuel
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      16,
+                    ), // Bordures arrondies
+                    side: const BorderSide(
+                      color: Colors.white,
+                      width: 1.0,
+                    ), // Contour blanc
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16.0),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'GROUPE DE $creatorName'.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            fontFamily: 'Poppins',
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        Text(
+                          createdAt != null
+                              ? _formatTimestamp(createdAt).split(' ')[1]
+                              : 'Heure inconnue',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: StreamBuilder<QuerySnapshot>(
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(groupId)
+                              .collection('messages')
+                              .orderBy('timestamp', descending: true)
+                              .limit(1)
+                              .snapshots(), // Écoute en temps réel pour les messages
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Text(
+                            'Chargement...',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Text(
+                            'Aucun message',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          );
+                        }
+
+                        final lastMessageData =
+                            snapshot.data!.docs.first.data()
+                                as Map<String, dynamic>;
+                        final senderName =
+                            lastMessageData['senderName'] ?? 'Inconnu';
+                        final text = lastMessageData['text'] ?? 'Message vide';
+                        final timestamp =
+                            lastMessageData['timestamp'] as Timestamp?;
+
+                        final formattedTime =
+                            timestamp != null
+                                ? '${timestamp.toDate().hour}:${timestamp.toDate().minute.toString().padLeft(2, '0')}'
+                                : 'Heure inconnue';
+
+                        return Text(
+                          '$senderName : $text\n$formattedTime',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        );
+                      },
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatView(groupId: groupId),
+                        ),
+                      );
+                    },
                   ),
                 );
               },

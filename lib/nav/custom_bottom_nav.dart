@@ -3,6 +3,7 @@ import 'profile_page.dart';
 import '../groupes/list/groupes/rejoindre/passerel.dart'; // Import de la nouvelle page
 import '../home_page.dart'; // Import de la page Home
 import '../Chat/messagerie/messages_page.dart';
+import '../QR/QR.dart';
 
 class CustomBottomNav extends StatelessWidget {
   final int selectedIndex;
@@ -67,6 +68,14 @@ class CustomBottomNav extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const Passerel(), // Nouvelle page
+                    ),
+                  );
+                } else if (index == 2) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const QRScanPage(), // Nouvelle page Ajouter
                     ),
                   );
                 }

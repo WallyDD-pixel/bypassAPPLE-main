@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../couleur/background_widget.dart'; // Importez votre BackgroundWidget
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AcceptRequestPage extends StatefulWidget {
   final String requestId;
@@ -119,6 +120,37 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
         'status':
             'Il reste $remainingMen place(s) pour les hommes et $remainingWomen place(s) pour les femmes',
       });
+
+      // Ajouter l'utilisateur dans la collection "chats"
+      final chatRef = FirebaseFirestore.instance
+          .collection('chats')
+          .doc(widget.groupId);
+
+      // Vérifiez si le document existe
+      final chatSnapshot = await chatRef.get();
+      if (!chatSnapshot.exists) {
+        debugPrint(
+          'Le document chats/${widget.groupId} n\'existe pas. Création...',
+        );
+        // Créez le document avec le champ "participants"
+        await chatRef.set({
+          'participants': [userId], // Initialisez le tableau "participants"
+          'createdAt':
+              FieldValue.serverTimestamp(), // Ajoutez une date de création
+          'groupId': widget.groupId, // Ajoutez l'ID du groupe
+          'createdBy':
+              FirebaseAuth.instance.currentUser?.uid, // Créateur du groupe
+        });
+      } else {
+        debugPrint(
+          'Le document chats/${widget.groupId} existe. Mise à jour...',
+        );
+        // Mettez à jour le tableau "participants" si le document existe
+        await chatRef.update({
+          'participants': FieldValue.arrayUnion([userId]),
+        });
+      }
+      debugPrint('Ajout de l\'utilisateur $userId au groupe ${widget.groupId}');
 
       // Afficher un message de succès
       if (mounted) {
