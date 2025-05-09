@@ -509,6 +509,7 @@ class GroupJoinRequest extends StatelessWidget {
         'paymentIntentId': paymentIntentId, // Enregistrer le PaymentIntentId
         'status': 'pending', // Statut initial de la demande
         'createdAt': FieldValue.serverTimestamp(),
+        'scanqr': false,
       });
 
       print(

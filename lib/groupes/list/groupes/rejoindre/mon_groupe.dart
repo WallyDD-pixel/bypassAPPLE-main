@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../couleur/background_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../QR/create_QR.dart';
 
 class MonGroupe extends StatefulWidget {
   const MonGroupe({super.key});
@@ -20,30 +21,36 @@ class _MonGroupeState extends State<MonGroupe> {
     return DateFormat('dd MMMM yyyy à HH:mm').format(timestamp.toDate());
   }
 
-  Future<Map<String, dynamic>?> _fetchGroupDetails(String groupId) async {
-    final groupSnapshot =
-        await FirebaseFirestore.instance
-            .collection('groups')
-            .doc(groupId)
-            .get();
+  Future<List<Map<String, dynamic>>> _fetchAllGroupAndEventDetails(
+    List<QueryDocumentSnapshot> requests,
+  ) async {
+    return Future.wait(
+      requests.map((request) async {
+        final data = request.data() as Map<String, dynamic>;
+        final groupId = data['groupId'];
+        final eventId = data['eventId'];
 
-    if (groupSnapshot.exists) {
-      return groupSnapshot.data();
-    }
-    return null;
-  }
+        final groupSnapshot =
+            await FirebaseFirestore.instance
+                .collection('groups')
+                .doc(groupId)
+                .get();
 
-  Future<Map<String, dynamic>?> _fetchEventDetails(String eventId) async {
-    final eventSnapshot =
-        await FirebaseFirestore.instance
-            .collection('events')
-            .doc(eventId)
-            .get();
+        final eventSnapshot =
+            await FirebaseFirestore.instance
+                .collection('events')
+                .doc(eventId)
+                .get();
 
-    if (eventSnapshot.exists) {
-      return eventSnapshot.data();
-    }
-    return null;
+        return {
+          'groupId': groupId,
+          'eventId': eventId,
+          'groupDetails': groupSnapshot.data(),
+          'eventDetails': eventSnapshot.data(),
+          'requestData': data,
+        };
+      }),
+    );
   }
 
   @override
@@ -125,52 +132,47 @@ class _MonGroupeState extends State<MonGroupe> {
                       );
                     }
 
-                    // Regrouper les demandes par groupId
-                    final Map<String, List<QueryDocumentSnapshot>>
-                    groupedRequests = {};
-                    for (var request in requests) {
-                      final data = request.data() as Map<String, dynamic>;
-                      final groupId = data['groupId'];
-                      if (!groupedRequests.containsKey(groupId)) {
-                        groupedRequests[groupId] = [];
-                      }
-                      groupedRequests[groupId]!.add(request);
-                    }
+                    return FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _fetchAllGroupAndEventDetails(requests),
+                      builder: (context, futureSnapshot) {
+                        if (futureSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.green,
+                            ),
+                          );
+                        }
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(10),
-                      itemCount: groupedRequests.keys.length,
-                      itemBuilder: (context, index) {
-                        final groupId = groupedRequests.keys.elementAt(index);
-                        final groupRequests = groupedRequests[groupId]!;
+                        if (futureSnapshot.hasError) {
+                          return const Center(
+                            child: Text(
+                              'Erreur lors du chargement des données',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          );
+                        }
 
-                        // Utiliser les données de la première demande pour récupérer les détails du groupe
-                        final firstRequestData =
-                            groupRequests.first.data() as Map<String, dynamic>;
+                        final items = futureSnapshot.data ?? [];
 
-                        return FutureBuilder<Map<String, dynamic>?>(
-                          future: _fetchGroupDetails(groupId),
-                          builder: (context, groupSnapshot) {
-                            if (groupSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: Colors.green,
-                                ),
-                              );
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            final groupDetails =
+                                item['groupDetails'] as Map<String, dynamic>?;
+                            final eventDetails =
+                                item['eventDetails'] as Map<String, dynamic>?;
+                            final requestData =
+                                item['requestData'] as Map<String, dynamic>;
+
+                            if (groupDetails == null || eventDetails == null) {
+                              return const SizedBox.shrink();
                             }
 
-                            if (groupSnapshot.hasError ||
-                                groupSnapshot.data == null) {
-                              return const Center(
-                                child: Text(
-                                  'Erreur lors du chargement des détails du groupe',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              );
-                            }
-
-                            final groupDetails = groupSnapshot.data!;
+                            final eventImageUrl =
+                                eventDetails['imageUrl'] ?? '';
                             final members =
                                 groupDetails['members']
                                     as Map<String, dynamic>? ??
@@ -183,72 +185,44 @@ class _MonGroupeState extends State<MonGroupe> {
                             final maxWomen =
                                 groupDetails['maxWomen'] as int? ?? 0;
 
-                            return FutureBuilder<Map<String, dynamic>?>(
-                              future: _fetchEventDetails(
-                                firstRequestData['eventId'],
-                              ),
-                              builder: (context, eventSnapshot) {
-                                if (eventSnapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(
-                                      color: Colors.green,
-                                    ),
-                                  );
-                                }
-
-                                if (eventSnapshot.hasError ||
-                                    eventSnapshot.data == null) {
-                                  return const Center(
-                                    child: Text(
-                                      'Erreur lors du chargement des détails de l\'événement',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  );
-                                }
-
-                                final eventDetails = eventSnapshot.data!;
-                                final eventImageUrl =
-                                    eventDetails['imageUrl'] ?? '';
-
-                                return GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) => GroupRequestsPage(
-                                              groupId: groupId,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                  child: Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    color: const Color.fromARGB(62, 13, 12, 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          // Affichage de l'image de l'événement
-                                          if (eventImageUrl.isNotEmpty)
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: CachedNetworkImage(
-                                                imageUrl: eventImageUrl,
-                                                height: 100,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
-                                                placeholder:
-                                                    (
-                                                      context,
-                                                      url,
-                                                    ) => Shimmer.fromColors(
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => GroupRequestsPage(
+                                          groupId:
+                                              groupId, // Passez le groupId ici
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                color: const Color.fromARGB(62, 13, 12, 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Affichage de l'image de l'événement
+                                      if (eventImageUrl.isNotEmpty)
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          child: CachedNetworkImage(
+                                            imageUrl: eventImageUrl,
+                                            height: 100,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            placeholder:
+                                                (context, url) =>
+                                                    Shimmer.fromColors(
                                                       baseColor:
                                                           Colors.grey[800]!,
                                                       highlightColor:
@@ -259,130 +233,114 @@ class _MonGroupeState extends State<MonGroupe> {
                                                         color: Colors.grey[800],
                                                       ),
                                                     ),
-                                                errorWidget:
-                                                    (
-                                                      context,
-                                                      url,
-                                                      error,
-                                                    ) => const Center(
-                                                      child: Icon(
-                                                        Icons
-                                                            .image_not_supported,
-                                                        color: Colors.red,
-                                                        size: 50,
-                                                      ),
-                                                    ),
-                                              ),
-                                            ),
-                                          const SizedBox(height: 8),
-
-                                          // Titre et prix alignés horizontalement
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  (eventDetails['name'] ??
-                                                          'Nom inconnu')
-                                                      .toUpperCase(),
-                                                  style: GoogleFonts.poppins(
-                                                    color: Colors.white,
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontStyle: FontStyle.italic,
+                                            errorWidget:
+                                                (
+                                                  context,
+                                                  url,
+                                                  error,
+                                                ) => const Center(
+                                                  child: Icon(
+                                                    Icons.image_not_supported,
+                                                    color: Colors.red,
+                                                    size: 50,
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
                                                 ),
-                                              ),
-                                              Text(
-                                                '${firstRequestData['price']}€',
-                                                style: const TextStyle(
-                                                  color: Color.fromARGB(
-                                                    255,
-                                                    255,
-                                                    255,
-                                                    255,
-                                                  ),
-                                                  fontSize: 30,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
                                           ),
+                                        ),
+                                      const SizedBox(height: 8),
 
-                                          // Statut
+                                      // Titre et prix alignés horizontalement
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              (eventDetails['name'] ??
+                                                      'Nom inconnu')
+                                                  .toUpperCase(),
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.white,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
                                           Text(
-                                            'Statut : ${groupDetails['status'] ?? 'Statut inconnu'}',
-                                            style: GoogleFonts.poppins(
-                                              color:
-                                                  groupDetails['status'] ==
-                                                          'pending'
-                                                      ? Colors.orange
-                                                      : const Color.fromARGB(
-                                                        255,
-                                                        255,
-                                                        255,
-                                                        255,
-                                                      ),
-                                              fontSize: 12,
-                                              fontWeight:
-                                                  FontWeight
-                                                      .w500, // Poids de la police (optionnel)
+                                            '${requestData['price']}€',
+                                            style: const TextStyle(
+                                              color: Color.fromARGB(
+                                                255,
+                                                255,
+                                                255,
+                                                255,
+                                              ),
+                                              fontSize: 30,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const SizedBox(height: 8),
+                                        ],
+                                      ),
 
+                                      // Statut
+                                      Text(
+                                        'Statut : ${groupDetails['status'] ?? 'Statut inconnu'}',
+                                        style: GoogleFonts.poppins(
+                                          color:
+                                              groupDetails['status'] ==
+                                                      'pending'
+                                                  ? Colors.orange
+                                                  : const Color.fromARGB(
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    255,
+                                                  ),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          // Bulles pour les hommes
                                           Row(
-                                            children: [
-                                              // Bulles pour les hommes
-                                              Row(
-                                                children: List.generate(maxMen, (
-                                                  index,
-                                                ) {
-                                                  final bubbleSize =
-                                                      maxMen > 3
-                                                          ? 40.0
-                                                          : 50.0; // Réduire la taille si plus de 3 bulles
-                                                  if (index < menCount) {
-                                                    final userId = men[index];
-                                                    return FutureBuilder<
-                                                      DocumentSnapshot
-                                                    >(
-                                                      future:
-                                                          FirebaseFirestore
-                                                              .instance
-                                                              .collection(
-                                                                'users',
-                                                              )
-                                                              .doc(userId)
-                                                              .get(),
-                                                      builder: (
-                                                        context,
-                                                        snapshot,
-                                                      ) {
-                                                        if (snapshot
-                                                                .connectionState ==
-                                                            ConnectionState
-                                                                .waiting) {
-                                                          return Shimmer.fromColors(
-                                                            baseColor:
-                                                                Colors
-                                                                    .grey[800]!,
-                                                            highlightColor:
-                                                                Colors
-                                                                    .grey[500]!,
-                                                            child: Container(
-                                                              margin:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        2,
-                                                                  ),
-                                                              width: bubbleSize,
-                                                              height:
-                                                                  bubbleSize,
-                                                              decoration: BoxDecoration(
+                                            children: List.generate(maxMen, (
+                                              index,
+                                            ) {
+                                              final bubbleSize =
+                                                  maxMen > 3 ? 40.0 : 50.0;
+                                              if (index < menCount) {
+                                                final userId = men[index];
+                                                return FutureBuilder<
+                                                  DocumentSnapshot
+                                                >(
+                                                  future:
+                                                      FirebaseFirestore.instance
+                                                          .collection('users')
+                                                          .doc(userId)
+                                                          .get(),
+                                                  builder: (context, snapshot) {
+                                                    if (snapshot
+                                                            .connectionState ==
+                                                        ConnectionState
+                                                            .waiting) {
+                                                      return Shimmer.fromColors(
+                                                        baseColor:
+                                                            Colors.grey[800]!,
+                                                        highlightColor:
+                                                            Colors.grey[500]!,
+                                                        child: Container(
+                                                          margin:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 2,
+                                                              ),
+                                                          width: bubbleSize,
+                                                          height: bubbleSize,
+                                                          decoration:
+                                                              BoxDecoration(
                                                                 color:
                                                                     Colors
                                                                         .grey[800],
@@ -390,64 +348,16 @@ class _MonGroupeState extends State<MonGroupe> {
                                                                     BoxShape
                                                                         .circle,
                                                               ),
-                                                            ),
-                                                          );
-                                                        }
+                                                        ),
+                                                      );
+                                                    }
 
-                                                        final photoURL =
-                                                            (snapshot.data
-                                                                    ?.data()
-                                                                as Map<
-                                                                  String,
-                                                                  dynamic
-                                                                >?)?['photoURL'];
-                                                        return Container(
-                                                          margin:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 2,
-                                                              ),
-                                                          width: bubbleSize,
-                                                          height: bubbleSize,
-                                                          decoration: BoxDecoration(
-                                                            color: Colors.blue
-                                                                .withOpacity(
-                                                                  0.2,
-                                                                ),
-                                                            shape:
-                                                                BoxShape.circle,
-                                                            border: Border.all(
-                                                              color:
-                                                                  Colors.blue,
-                                                            ),
-                                                          ),
-                                                          child:
-                                                              photoURL != null
-                                                                  ? ClipOval(
-                                                                    child: Image.network(
-                                                                      photoURL,
-                                                                      fit:
-                                                                          BoxFit
-                                                                              .cover,
-                                                                    ),
-                                                                  )
-                                                                  : const Center(
-                                                                    child: Text(
-                                                                      '?',
-                                                                      style: TextStyle(
-                                                                        color:
-                                                                            Colors.blue,
-                                                                        fontSize:
-                                                                            20, // Taille du point d'interrogation
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                        );
-                                                      },
-                                                    );
-                                                  } else {
-                                                    // Bulle vide avec un point d'interrogation
+                                                    final photoURL =
+                                                        (snapshot.data?.data()
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >?)?['photoURL'];
                                                     return Container(
                                                       margin:
                                                           const EdgeInsets.symmetric(
@@ -456,111 +366,97 @@ class _MonGroupeState extends State<MonGroupe> {
                                                       width: bubbleSize,
                                                       height: bubbleSize,
                                                       decoration: BoxDecoration(
-                                                        color:
-                                                            Colors.transparent,
+                                                        color: Colors.blue
+                                                            .withOpacity(0.2),
+                                                        shape: BoxShape.circle,
                                                         border: Border.all(
                                                           color: Colors.blue,
                                                         ),
-                                                        shape: BoxShape.circle,
                                                       ),
-                                                      child: const Center(
-                                                        child: Text(
-                                                          '?',
-                                                          style: TextStyle(
-                                                            color: Colors.blue,
-                                                            fontSize:
-                                                                20, // Taille du point d'interrogation
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                }),
-                                              ),
-                                              const SizedBox(width: 2),
-
-                                              // Bulles pour les femmes
-                                              Row(
-                                                children: List.generate(maxWomen, (
-                                                  index,
-                                                ) {
-                                                  final bubbleSize =
-                                                      maxWomen > 3
-                                                          ? 40.0
-                                                          : 50.0; // Réduire la taille si plus de 3 bulles
-                                                  if (index < womenCount) {
-                                                    final userId = women[index];
-                                                    return FutureBuilder<
-                                                      DocumentSnapshot
-                                                    >(
-                                                      future:
-                                                          FirebaseFirestore
-                                                              .instance
-                                                              .collection(
-                                                                'users',
-                                                              )
-                                                              .doc(userId)
-                                                              .get(),
-                                                      builder: (
-                                                        context,
-                                                        snapshot,
-                                                      ) {
-                                                        final photoURL =
-                                                            (snapshot.data
-                                                                    ?.data()
-                                                                as Map<
-                                                                  String,
-                                                                  dynamic
-                                                                >?)?['photoURL'];
-                                                        return Container(
-                                                          margin:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 2,
-                                                              ),
-                                                          width: bubbleSize,
-                                                          height: bubbleSize,
-                                                          decoration: BoxDecoration(
-                                                            color: Colors.pink
-                                                                .withOpacity(
-                                                                  0.2,
+                                                      child:
+                                                          photoURL != null
+                                                              ? ClipOval(
+                                                                child: Image.network(
+                                                                  photoURL,
+                                                                  fit:
+                                                                      BoxFit
+                                                                          .cover,
                                                                 ),
-                                                            shape:
-                                                                BoxShape.circle,
-                                                            border: Border.all(
-                                                              color:
-                                                                  Colors.pink,
-                                                            ),
-                                                          ),
-                                                          child:
-                                                              photoURL != null
-                                                                  ? ClipOval(
-                                                                    child: Image.network(
-                                                                      photoURL,
-                                                                      fit:
-                                                                          BoxFit
-                                                                              .cover,
-                                                                    ),
-                                                                  )
-                                                                  : const Center(
-                                                                    child: Text(
-                                                                      '?',
-                                                                      style: TextStyle(
-                                                                        color:
-                                                                            Colors.pink,
-                                                                        fontSize:
-                                                                            20, // Taille du point d'interrogation
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                      ),
-                                                                    ),
+                                                              )
+                                                              : const Center(
+                                                                child: Text(
+                                                                  '?',
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        Colors
+                                                                            .blue,
+                                                                    fontSize:
+                                                                        20,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
                                                                   ),
-                                                        );
-                                                      },
+                                                                ),
+                                                              ),
                                                     );
-                                                  } else {
-                                                    // Bulle vide avec un point d'interrogation
+                                                  },
+                                                );
+                                              } else {
+                                                return Container(
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 2,
+                                                      ),
+                                                  width: bubbleSize,
+                                                  height: bubbleSize,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.transparent,
+                                                    border: Border.all(
+                                                      color: Colors.blue,
+                                                    ),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Center(
+                                                    child: Text(
+                                                      '?',
+                                                      style: TextStyle(
+                                                        color: Colors.blue,
+                                                        fontSize: 20,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }),
+                                          ),
+                                          const SizedBox(width: 2),
+
+                                          // Bulles pour les femmes
+                                          Row(
+                                            children: List.generate(maxWomen, (
+                                              index,
+                                            ) {
+                                              final bubbleSize =
+                                                  maxWomen > 3 ? 40.0 : 50.0;
+                                              if (index < womenCount) {
+                                                final userId = women[index];
+                                                return FutureBuilder<
+                                                  DocumentSnapshot
+                                                >(
+                                                  future:
+                                                      FirebaseFirestore.instance
+                                                          .collection('users')
+                                                          .doc(userId)
+                                                          .get(),
+                                                  builder: (context, snapshot) {
+                                                    final photoURL =
+                                                        (snapshot.data?.data()
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >?)?['photoURL'];
                                                     return Container(
                                                       margin:
                                                           const EdgeInsets.symmetric(
@@ -569,37 +465,79 @@ class _MonGroupeState extends State<MonGroupe> {
                                                       width: bubbleSize,
                                                       height: bubbleSize,
                                                       decoration: BoxDecoration(
-                                                        color:
-                                                            Colors.transparent,
+                                                        color: Colors.pink
+                                                            .withOpacity(0.2),
+                                                        shape: BoxShape.circle,
                                                         border: Border.all(
                                                           color: Colors.pink,
                                                         ),
-                                                        shape: BoxShape.circle,
                                                       ),
-                                                      child: const Center(
-                                                        child: Text(
-                                                          '?',
-                                                          style: TextStyle(
-                                                            color: Colors.pink,
-                                                            fontSize:
-                                                                20, // Taille du point d'interrogation
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ),
+                                                      child:
+                                                          photoURL != null
+                                                              ? ClipOval(
+                                                                child: Image.network(
+                                                                  photoURL,
+                                                                  fit:
+                                                                      BoxFit
+                                                                          .cover,
+                                                                ),
+                                                              )
+                                                              : const Center(
+                                                                child: Text(
+                                                                  '?',
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        Colors
+                                                                            .pink,
+                                                                    fontSize:
+                                                                        20,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
+                                                                ),
+                                                              ),
                                                     );
-                                                  }
-                                                }),
-                                              ),
-                                            ],
+                                                  },
+                                                );
+                                              } else {
+                                                return Container(
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 2,
+                                                      ),
+                                                  width: bubbleSize,
+                                                  height: bubbleSize,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.transparent,
+                                                    border: Border.all(
+                                                      color: Colors.pink,
+                                                    ),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Center(
+                                                    child: Text(
+                                                      '?',
+                                                      style: TextStyle(
+                                                        color: Colors.pink,
+                                                        fontSize: 20,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }),
                                           ),
                                         ],
                                       ),
-                                    ),
+
+                                      // Bouton pour générer un QR code
+                                    ],
                                   ),
-                                );
-                              },
+                                ),
+                              ),
                             );
                           },
                         );

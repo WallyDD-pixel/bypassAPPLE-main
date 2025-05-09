@@ -100,6 +100,11 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
         ), // Ajouter le montant net au solde
       });
 
+      // Ajouter le champ "priceFee" dans la demande
+      await requestRef.update({
+        'priceFee': netAmount, // Enregistrer le montant net dans priceFee
+      });
+
       // Récupérer les données du groupe
       final groupSnapshot = await groupRef.get();
       final groupData = groupSnapshot.data() as Map<String, dynamic>;

@@ -6,6 +6,7 @@ import 'GroupJoinRequest.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../couleur/background_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../rejoindre/femme/femme.dart';
 
 class JoinGroup extends StatefulWidget {
   final String eventId;
@@ -695,25 +696,85 @@ class _JoinGroupState extends State<JoinGroup> {
                                                 ),
                                               )
                                               : OutlinedButton(
-                                                onPressed: () {
-                                                  Navigator.of(context).push(
-                                                    MaterialPageRoute(
-                                                      builder:
-                                                          (
-                                                            context,
-                                                          ) => GroupJoinRequest(
-                                                            groupId: group.id,
-                                                            eventId:
-                                                                widget.eventId,
-                                                            creatorId:
-                                                                creatorId ?? '',
-                                                            price:
-                                                                data['price']
-                                                                    as num? ??
-                                                                0,
-                                                          ),
-                                                    ),
-                                                  );
+                                                onPressed: () async {
+                                                  final userId =
+                                                      FirebaseAuth
+                                                          .instance
+                                                          .currentUser!
+                                                          .uid;
+
+                                                  // Récupérer les informations de l'utilisateur connecté
+                                                  final userSnapshot =
+                                                      await FirebaseFirestore
+                                                          .instance
+                                                          .collection('users')
+                                                          .doc(userId)
+                                                          .get();
+
+                                                  if (!userSnapshot.exists) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Erreur : utilisateur introuvable.',
+                                                        ),
+                                                      ),
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  final userData =
+                                                      userSnapshot.data()
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >;
+                                                  final String? sexe =
+                                                      userData['Sexe'];
+
+                                                  // Vérifier le sexe et rediriger en conséquence
+                                                  if (sexe == 'homme') {
+                                                    // Rediriger vers GroupJoinRequest
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder:
+                                                            (
+                                                              context,
+                                                            ) => GroupJoinRequest(
+                                                              groupId: group.id,
+                                                              eventId:
+                                                                  widget
+                                                                      .eventId,
+                                                              creatorId:
+                                                                  creatorId ??
+                                                                  '',
+                                                              price:
+                                                                  data['price']
+                                                                      as num? ??
+                                                                  0,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    // Rediriger vers une nouvelle page pour les femmes avec les infos du groupe
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder:
+                                                            (
+                                                              context,
+                                                            ) => NewPageForWomen(
+                                                              groupId: group.id,
+                                                              groupName:
+                                                                  data['name'] ??
+                                                                  'Nom du groupe inconnu',
+                                                              eventId: widget
+                                                                  .eventId,
+                                                                  
+                                                            ),
+                                                      ),
+                                                    );
+                                                  }
                                                 },
                                                 style: OutlinedButton.styleFrom(
                                                   side: const BorderSide(
