@@ -703,75 +703,118 @@ class _JoinGroupState extends State<JoinGroup> {
                                                           .currentUser!
                                                           .uid;
 
-                                                  // Récupérer les informations de l'utilisateur connecté
-                                                  final userSnapshot =
-                                                      await FirebaseFirestore
-                                                          .instance
-                                                          .collection('users')
-                                                          .doc(userId)
-                                                          .get();
+                                                  try {
+                                                    // Récupérer les informations de l'utilisateur connecté
+                                                    final userSnapshot =
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection('users')
+                                                            .doc(userId)
+                                                            .get();
 
-                                                  if (!userSnapshot.exists) {
+                                                    if (!userSnapshot.exists) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            'Erreur : utilisateur introuvable.',
+                                                          ),
+                                                        ),
+                                                      );
+                                                      return;
+                                                    }
+
+                                                    final userData =
+                                                        userSnapshot.data()
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >;
+                                                    final String? sexe =
+                                                        userData['sexe'];
+
+                                                    // Log pour vérifier la valeur de sexe
+                                                    print(
+                                                      'Sexe de l\'utilisateur : $sexe',
+                                                    );
+
+                                                    // Vérifier le sexe et rediriger en conséquence
+                                                    if (sexe == 'homme') {
+                                                      print(
+                                                        'Redirection vers GroupJoinRequest pour un homme',
+                                                      );
+                                                      Navigator.of(
+                                                        context,
+                                                      ).push(
+                                                        MaterialPageRoute(
+                                                          builder:
+                                                              (
+                                                                context,
+                                                              ) => GroupJoinRequest(
+                                                                groupId:
+                                                                    group.id,
+                                                                eventId:
+                                                                    widget
+                                                                        .eventId,
+                                                                creatorId:
+                                                                    creatorId ??
+                                                                    '',
+                                                                price:
+                                                                    data['price']
+                                                                        as num? ??
+                                                                    0,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else if (sexe ==
+                                                        'femme') {
+                                                      print(
+                                                        'Redirection vers NewPageForWomen pour une femme',
+                                                      );
+                                                      Navigator.of(
+                                                        context,
+                                                      ).push(
+                                                        MaterialPageRoute(
+                                                          builder:
+                                                              (
+                                                                context,
+                                                              ) => NewPageForWomen(
+                                                                groupId:
+                                                                    group.id,
+                                                                groupName:
+                                                                    data['name'] ??
+                                                                    'Nom du groupe inconnu',
+                                                                eventId:
+                                                                    widget
+                                                                        .eventId,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else {
+                                                      // Si le sexe est indéfini ou invalide
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            'Erreur : sexe non défini ou invalide.',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  } catch (e) {
+                                                    // Gestion des erreurs
+                                                    print(
+                                                      'Erreur lors de la récupération des informations utilisateur : $e',
+                                                    );
                                                     ScaffoldMessenger.of(
                                                       context,
                                                     ).showSnackBar(
-                                                      const SnackBar(
+                                                      SnackBar(
                                                         content: Text(
-                                                          'Erreur : utilisateur introuvable.',
+                                                          'Erreur : $e',
                                                         ),
-                                                      ),
-                                                    );
-                                                    return;
-                                                  }
-
-                                                  final userData =
-                                                      userSnapshot.data()
-                                                          as Map<
-                                                            String,
-                                                            dynamic
-                                                          >;
-                                                  final String? sexe =
-                                                      userData['Sexe'];
-
-                                                  // Vérifier le sexe et rediriger en conséquence
-                                                  if (sexe == 'homme') {
-                                                    // Rediriger vers GroupJoinRequest
-                                                    Navigator.of(context).push(
-                                                      MaterialPageRoute(
-                                                        builder:
-                                                            (
-                                                              context,
-                                                            ) => GroupJoinRequest(
-                                                              groupId: group.id,
-                                                              eventId:
-                                                                  widget
-                                                                      .eventId,
-                                                              creatorId:
-                                                                  creatorId ??
-                                                                  '',
-                                                              price:
-                                                                  data['price']
-                                                                      as num? ??
-                                                                  0,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  } else {
-                                                    // Rediriger vers une nouvelle page pour les femmes avec les infos du groupe
-                                                    Navigator.of(context).push(
-                                                      MaterialPageRoute(
-                                                        builder:
-                                                            (
-                                                              context,
-                                                            ) => NewPageForWomen(
-                                                              groupId: group.id,
-                                                              groupName:
-                                                                  data['name'] ??
-                                                                  'Nom du groupe inconnu',
-                                                              eventId: widget
-                                                                  .eventId,
-                                                                  
-                                                            ),
                                                       ),
                                                     );
                                                   }
@@ -785,7 +828,7 @@ class _JoinGroupState extends State<JoinGroup> {
                                                       240,
                                                     ),
                                                     width: 1.5,
-                                                  ), // Bordure verte
+                                                  ),
                                                   padding:
                                                       const EdgeInsets.symmetric(
                                                         vertical: 12,
@@ -795,11 +838,10 @@ class _JoinGroupState extends State<JoinGroup> {
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           8,
-                                                        ), // Coins arrondis
+                                                        ),
                                                   ),
                                                   backgroundColor:
-                                                      Colors
-                                                          .transparent, // Intérieur transparent
+                                                      Colors.transparent,
                                                 ),
                                                 child: Text(
                                                   'REJOINDRE',
@@ -809,7 +851,7 @@ class _JoinGroupState extends State<JoinGroup> {
                                                       244,
                                                       244,
                                                       244,
-                                                    ), // Texte vert
+                                                    ),
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 18,
                                                     fontStyle: FontStyle.italic,

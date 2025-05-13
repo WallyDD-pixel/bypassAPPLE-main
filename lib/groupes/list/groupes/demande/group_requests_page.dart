@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class GroupRequestsPage extends StatelessWidget {
   final String groupId;
+  
 
   const GroupRequestsPage({super.key, required this.groupId});
 

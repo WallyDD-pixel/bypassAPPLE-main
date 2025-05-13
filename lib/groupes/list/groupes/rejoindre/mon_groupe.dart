@@ -7,7 +7,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../couleur/background_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../QR/create_QR.dart';
 
 class MonGroupe extends StatefulWidget {
   const MonGroupe({super.key});
@@ -179,6 +178,12 @@ class _MonGroupeState extends State<MonGroupe> {
                                 {};
                             final men = (members['men'] as List?) ?? [];
                             final women = (members['women'] as List?) ?? [];
+                            final request = requests[index];
+
+                            final data = request.data() as Map<String, dynamic>;
+
+                            final groupId = data['groupId'] as String? ?? '';
+
                             final menCount = men.length;
                             final womenCount = women.length;
                             final maxMen = groupDetails['maxMen'] as int? ?? 0;
@@ -187,12 +192,26 @@ class _MonGroupeState extends State<MonGroupe> {
 
                             return GestureDetector(
                               onTap: () {
-                                Navigator.of(context).pushReplacement(
+                                // Ajoutez un log pour vérifier la valeur de groupId
+                                print('groupId : $groupId');
+
+                                if (groupId.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Erreur : identifiant du groupe introuvable.',
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder:
                                         (context) => GroupRequestsPage(
                                           groupId:
-                                              groupId, // Passez le groupId ici
+                                              groupId, // Passez ici l'identifiant du groupe
                                         ),
                                   ),
                                 );
@@ -271,12 +290,7 @@ class _MonGroupeState extends State<MonGroupe> {
                                           Text(
                                             '${requestData['price']}€',
                                             style: const TextStyle(
-                                              color: Color.fromARGB(
-                                                255,
-                                                255,
-                                                255,
-                                                255,
-                                              ),
+                                              color: Colors.white,
                                               fontSize: 30,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -292,17 +306,14 @@ class _MonGroupeState extends State<MonGroupe> {
                                               groupDetails['status'] ==
                                                       'pending'
                                                   ? Colors.orange
-                                                  : const Color.fromARGB(
-                                                    255,
-                                                    255,
-                                                    255,
-                                                    255,
-                                                  ),
+                                                  : Colors.white,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                       const SizedBox(height: 8),
+
+                                      // Bulles pour les hommes et les femmes
                                       Row(
                                         children: [
                                           // Bulles pour les hommes
@@ -532,8 +543,6 @@ class _MonGroupeState extends State<MonGroupe> {
                                           ),
                                         ],
                                       ),
-
-                                      // Bouton pour générer un QR code
                                     ],
                                   ),
                                 ),
