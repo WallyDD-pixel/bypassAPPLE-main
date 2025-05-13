@@ -1,4 +1,4 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bypass/paiement/stripe_payment_service.dart';
 import 'accept_request_page.dart';
@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 class GroupRequestsPage extends StatelessWidget {
   final String groupId;
-  
 
   const GroupRequestsPage({super.key, required this.groupId});
 
@@ -349,6 +348,10 @@ class GroupRequestsPage extends StatelessWidget {
                                           // Bouton Accepter
                                           ElevatedButton.icon(
                                             onPressed: () {
+                                              final double price =
+                                                  (data['price'] as num?)
+                                                      ?.toDouble() ??
+                                                  0.0; // Conversion sécurisée
                                               Navigator.of(context).push(
                                                 MaterialPageRoute(
                                                   builder:
@@ -358,7 +361,8 @@ class GroupRequestsPage extends StatelessWidget {
                                                         requestId: request.id,
                                                         userId: data['userId'],
                                                         groupId: groupId,
-                                                        price: data['price'],
+                                                        price:
+                                                            price, // Passez ici un double valide
                                                       ),
                                                 ),
                                               );
@@ -368,18 +372,6 @@ class GroupRequestsPage extends StatelessWidget {
                                               color: Colors.white,
                                             ),
                                             label: const Text('Accepter'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.green,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 12,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
                                           ),
                                           // Bouton Refuser
                                           ElevatedButton.icon(
