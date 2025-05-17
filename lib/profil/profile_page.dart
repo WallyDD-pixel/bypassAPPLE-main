@@ -16,6 +16,7 @@ class UserProfilePage extends StatelessWidget {
         children: [
           // Arrière-plan animé
           const BackgroundWidget(),
+
           // Contenu principal
           SafeArea(
             child: Column(

@@ -1,6 +1,6 @@
 import 'package:bypass/paiement/stripe_payment_service.dart';
 import 'package:flutter/material.dart';
-import '../../../../couleur/background_widget.dart'; // Importez votre BackgroundWidget
+import '../../../../couleur/background_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,165 +24,176 @@ class AcceptRequestPage extends StatefulWidget {
 }
 
 class _AcceptRequestPageState extends State<AcceptRequestPage> {
-  Future<void> _acceptRequest(String requestId, String userId) async {
+  Future<void> _acceptRequest(
+    String requestId,
+    String userId,
+    double netAmount,
+  ) async {
     try {
-      final groupRef = FirebaseFirestore.instance
-          .collection('groups')
-          .doc(widget.groupId);
+      debugPrint(
+        'Recherche du document dans groupJoinRequests pour requestId: $requestId et userId: $userId',
+      );
 
-      // Ajouter l'utilisateur au groupe
-      await groupRef.update({
-        'members.men': FieldValue.arrayUnion([
-          userId,
-        ]), // Ajout à la liste des membres
-      });
-
-      // Mettre à jour le statut de la demande
-      final requestRef = FirebaseFirestore.instance
+      // Rechercher le document correspondant à requestId
+      final docRef = FirebaseFirestore.instance
           .collection('groupJoinRequests')
           .doc(requestId);
-      final requestSnapshot = await requestRef.get();
-      final requestData = requestSnapshot.data() as Map<String, dynamic>;
+      final docSnapshot = await docRef.get();
 
-      await requestRef.update({
-        'status': 'accepted', // Mettre le statut à "accepted"
-      });
-
-      // Capturer le paiement
-      final paymentIntentId = requestData['paymentIntentId'];
-      if (paymentIntentId != null) {
-        await StripeService.capturePayment(paymentIntentId);
-      }
-
-      // Calculer le montant net pour le créateur
-      final double price = requestData['price'] as double;
-      const double stripeFeePercentageEuropean =
-          1.4; // Frais Stripe pour les cartes européennes
-      const double stripeFeePercentageNonEuropean =
-          2.9; // Frais Stripe pour les cartes non européennes
-      const double stripeFixedFee = 0.25; // Frais fixes Stripe (en euros)
-      const double platformFeePercentage = 5.0; // Frais de la plateforme
-
-      // Supposons que vous détectez si la carte est européenne ou non
-      final bool isEuropeanCard = true; // Changez cette valeur selon le cas
-
-      // Calculer les frais Stripe
-      final double stripeFeePercentage =
-          isEuropeanCard
-              ? stripeFeePercentageEuropean
-              : stripeFeePercentageNonEuropean;
-
-      final double stripeFee =
-          (price * stripeFeePercentage / 100) + stripeFixedFee;
-
-      // Calculer les frais de la plateforme
-      final double platformFee = price * platformFeePercentage / 100;
-
-      // Calculer le montant net pour le créateur
-      final double netAmount = price - stripeFee - platformFee;
-
-      // Ajouter le montant net au champ "solde" du créateur
-      final creatorRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(requestData['creatorId']);
-
-      // Vérifier si le champ "solde" existe, sinon l'initialiser à 0
-      final creatorSnapshot = await creatorRef.get();
-      if (!creatorSnapshot.exists ||
-          !creatorSnapshot.data()!.containsKey('solde')) {
-        await creatorRef.set({'solde': 0}, SetOptions(merge: true));
-      }
-
-      // Ajouter le montant net au solde
-      await creatorRef.update({
-        'solde': FieldValue.increment(
-          netAmount,
-        ), // Ajouter le montant net au solde
-      });
-
-      // Ajouter le champ "priceFee" dans la demande
-      await requestRef.update({
-        'priceFee': netAmount, // Enregistrer le montant net dans priceFee
-      });
-
-      // Récupérer les données du groupe
-      final groupSnapshot = await groupRef.get();
-      final groupData = groupSnapshot.data() as Map<String, dynamic>;
-
-      final maxMen = groupData['maxMen'] as int? ?? 0;
-      final maxWomen = groupData['maxWomen'] as int? ?? 0;
-
-      final members = groupData['members'] as Map<String, dynamic>? ?? {};
-      final menCount = (members['men'] as List?)?.length ?? 0;
-      final womenCount = (members['women'] as List?)?.length ?? 0;
-
-      // Calculer les places restantes
-      final remainingMen = maxMen - menCount;
-      final remainingWomen = maxWomen - womenCount;
-
-      // Mettre à jour le champ "status" dans la collection "groups"
-      await groupRef.update({
-        'status':
-            'Il reste $remainingMen place(s) pour les hommes et $remainingWomen place(s) pour les femmes',
-      });
-
-      // Ajouter l'utilisateur dans la collection "chats"
-      final chatRef = FirebaseFirestore.instance
-          .collection('chats')
-          .doc(widget.groupId);
-
-      // Vérifiez si le document existe
-      final chatSnapshot = await chatRef.get();
-      if (!chatSnapshot.exists) {
-        debugPrint(
-          'Le document chats/${widget.groupId} n\'existe pas. Création...',
-        );
-        // Créez le document avec le champ "participants"
-        await chatRef.set({
-          'participants': [userId], // Initialisez le tableau "participants"
-          'createdAt':
-              FieldValue.serverTimestamp(), // Ajoutez une date de création
-          'groupId': widget.groupId, // Ajoutez l'ID du groupe
-          'createdBy':
-              FirebaseAuth.instance.currentUser?.uid, // Créateur du groupe
-        });
-      } else {
-        debugPrint(
-          'Le document chats/${widget.groupId} existe. Mise à jour...',
-        );
-        // Mettez à jour le tableau "participants" si le document existe
-        await chatRef.update({
-          'participants': FieldValue.arrayUnion([userId]),
-        });
-      }
-      debugPrint('Ajout de l\'utilisateur $userId au groupe ${widget.groupId}');
-
-      // Afficher un message de succès
-      if (mounted) {
+      if (!docSnapshot.exists) {
+        debugPrint('Aucun document trouvé pour requestId: $requestId');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Demande acceptée avec succès'),
-            backgroundColor: Colors.green,
+            content: Text('Erreur : Document introuvable.'),
+            backgroundColor: Colors.red,
           ),
         );
+        return;
       }
 
-      // Retour à la page précédente
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      // Afficher un message d'erreur
-      if (mounted) {
+      // Mettre à jour le statut
+      await docRef.update({'status': 'accepted'});
+
+      debugPrint('Statut mis à jour avec succès pour requestId: $requestId');
+
+      // Récupérer les informations de l'utilisateur
+      final userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+      if (!userSnapshot.exists) {
+        debugPrint('Utilisateur introuvable pour userId: $userId');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Erreur : Utilisateur introuvable.'),
+            backgroundColor: Colors.red,
+          ),
         );
+        return;
       }
+
+      final userData = userSnapshot.data()!;
+      final sexe = userData['sexe'] ?? 'unknown';
+
+      if (sexe != 'homme') {
+        debugPrint('L\'utilisateur n\'est pas un homme.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur : Cet utilisateur n\'est pas un homme.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Ajouter l'utilisateur dans le groupe
+      final groupId = docSnapshot.data()?['groupId'];
+      if (groupId == null) {
+        debugPrint('GroupId introuvable dans le document.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur : GroupId introuvable.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final groupRef = FirebaseFirestore.instance
+          .collection('groups')
+          .doc(groupId);
+      final groupSnapshot = await groupRef.get();
+
+      if (!groupSnapshot.exists) {
+        debugPrint('Groupe introuvable pour groupId: $groupId');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur : Groupe introuvable.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final groupData = groupSnapshot.data()!;
+      final members = groupData['members'] as Map<String, dynamic>? ?? {};
+      final men = (members['men'] as List<dynamic>? ?? []).length;
+      final maxMen = groupData['maxMen'] as int? ?? 0;
+
+      // Vérifier la limite des hommes
+      if (men >= maxMen) {
+        debugPrint('Le groupe a déjà atteint le nombre maximum d\'hommes');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur : Le groupe a déjà assez d\'hommes.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Ajouter l'utilisateur dans la liste des hommes
+      debugPrint('Ajout de l\'utilisateur dans la liste des hommes');
+      await groupRef.update({
+        'members.men': FieldValue.arrayUnion([userId]),
+      });
+
+      debugPrint('Utilisateur ajouté avec succès dans le groupe');
+
+      // Enregistrer la valeur de netAmount dans le champ prixnet
+      debugPrint('Enregistrement de netAmount : $netAmount');
+      await docRef.update({'prixnet': netAmount});
+
+      debugPrint('netAmount enregistré avec succès dans le document.');
+
+      // Ajouter l'utilisateur au chat du groupe
+      final chatRef = FirebaseFirestore.instance
+          .collection('chats')
+          .doc(groupId);
+      final chatSnapshot = await chatRef.get();
+
+      if (!chatSnapshot.exists) {
+        // Si le chat n'existe pas encore, le créer
+        await chatRef.set({
+          'groupId': groupId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'members': [userId],
+        });
+        debugPrint('Chat créé pour le groupe : $groupId');
+      } else {
+        // Ajouter l'utilisateur à la liste des membres du chat
+        await chatRef.update({
+          'members': FieldValue.arrayUnion([userId]),
+        });
+        debugPrint('Utilisateur ajouté au chat du groupe : $groupId');
+      }
+
+      // Afficher un message de succès
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Utilisateur accepté et ajouté au groupe et au chat avec succès !',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Retour à la page précédente
+      Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint(
+        'Erreur lors de la mise à jour du statut ou de l\'ajout au groupe/chat : $e',
+      );
+      // Afficher un message d'erreur
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
   bool _isChecked = false; // État de la checkbox
-  final int _selectedIndex = 0; // Index de la barre de navigation
 
   @override
   Widget build(BuildContext context) {
@@ -199,8 +210,11 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
     // Calculer les frais de la plateforme
     final double platformFee = widget.price * platformFeePercentage / 100;
 
+    // Calculer les frais totaux (Stripe + plateforme)
+    final double totalFees = stripeFee + platformFee;
+
     // Calculer le montant net pour le créateur
-    final double netAmount = widget.price - stripeFee - platformFee;
+    final double netAmount = widget.price - totalFees;
 
     return Scaffold(
       body: Stack(
@@ -211,12 +225,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
           // Barre de navigation en haut
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              50,
-              5,
-              5,
-            ), // Espacement pour l'AppBar
+            padding: const EdgeInsets.fromLTRB(16, 50, 5, 5),
             decoration: const BoxDecoration(
               color: Colors.transparent, // Fond transparent
             ),
@@ -248,9 +257,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
 
           // Contenu principal
           Padding(
-            padding: const EdgeInsets.only(
-              top: 100,
-            ), // Ajout d'un padding en haut
+            padding: const EdgeInsets.only(top: 100),
             child: Column(
               children: [
                 Expanded(
@@ -261,12 +268,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
                       children: [
                         // Titre principal
                         Card(
-                          color: const Color.fromARGB(
-                            0,
-                            0,
-                            0,
-                            0,
-                          ).withOpacity(0.3), // Fond transparent avec opacité
+                          color: Colors.black.withOpacity(0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -287,10 +289,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
 
                         // Détails des frais
                         Card(
-                          color: Colors.black.withOpacity(
-                            0.3,
-                          ), // Fond transparent avec opacité
-
+                          color: Colors.black.withOpacity(0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -308,27 +307,29 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
                                     fontFamily: 'Poppins',
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                _buildDetailRow(
-                                  'Prix total payé par l\'utilisateur :',
-                                  '${widget.price.toStringAsFixed(2)} €',
-                                  valueFontSize: 18.0,
-                                ),
-                                _buildDetailRow(
-                                  'Frais Stripe :',
-                                  '${stripeFee.toStringAsFixed(2)} €',
-                                  valueFontSize: 16.0,
-                                ),
-                                _buildDetailRow(
-                                  'Frais de la plateforme :',
-                                  '${platformFee.toStringAsFixed(2)} €',
-                                  valueFontSize: 16.0,
-                                ),
-                                _buildDetailRow(
-                                  'Montant net pour le créateur :',
-                                  '${netAmount.toStringAsFixed(2)} €',
-                                  valueColor: Colors.green,
-                                  valueFontSize: 18.0,
+                                const SizedBox(height: 16),
+
+                                // Utilisation d'une table pour aligner les textes et les chiffres
+                                Table(
+                                  columnWidths: const {
+                                    0: FlexColumnWidth(2),
+                                    1: FlexColumnWidth(1),
+                                  },
+                                  children: [
+                                    _buildTableRow(
+                                      'Prix total payé par l\'utilisateur :',
+                                      '${widget.price.toStringAsFixed(2)} €',
+                                    ),
+                                    _buildTableRow(
+                                      'Frais totaux (Stripe + plateforme) :',
+                                      '${totalFees.toStringAsFixed(2)} €',
+                                    ),
+                                    _buildTableRow(
+                                      'Montant net pour le créateur :',
+                                      '${netAmount.toStringAsFixed(2)} €',
+                                      valueColor: Colors.green,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -338,10 +339,7 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
 
                         // Conditions générales avec checkbox
                         Card(
-                          color: Colors.black.withOpacity(
-                            0.3,
-                          ), // Fond transparent avec opacité
-
+                          color: Colors.black.withOpacity(0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -443,7 +441,8 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
                                   _acceptRequest(
                                     widget.requestId,
                                     widget.userId,
-                                  ); // Appeler la méthode pour accepter la demande
+                                    netAmount,
+                                  );
                                 }
                                 : null, // Désactiver le bouton si la checkbox n'est pas cochée
                         style: ElevatedButton.styleFrom(
@@ -475,32 +474,17 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
     );
   }
 
-  // Widget pour afficher une ligne de détail
-  Widget _buildDetailRow(
+  // Widget pour construire une ligne de la table
+  TableRow _buildTableRow(
     String label,
     String value, {
     Color valueColor = Colors.white,
-    double valueFontSize = 14.0,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(
-          0,
-          0,
-          0,
-          0,
-        ).withOpacity(0.3), // Fond semi-transparent
-        borderRadius: BorderRadius.circular(8), // Coins arrondis
-      ),
-      padding: const EdgeInsets.symmetric(
-        vertical: 8.0,
-        horizontal: 12.0,
-      ), // Espacement interne
-      margin: const EdgeInsets.symmetric(vertical: 4.0), // Espacement externe
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
             label,
             style: const TextStyle(
               fontSize: 14,
@@ -508,16 +492,20 @@ class _AcceptRequestPageState extends State<AcceptRequestPage> {
               fontFamily: 'Poppins',
             ),
           ),
-          Text(
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
             value,
             style: TextStyle(
-              fontSize: valueFontSize,
+              fontSize: 14,
               color: valueColor,
               fontFamily: 'Poppins',
             ),
+            textAlign: TextAlign.right,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

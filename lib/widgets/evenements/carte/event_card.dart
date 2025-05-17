@@ -203,6 +203,27 @@ class EventCard extends StatelessWidget {
     }
   }
 
+  Future<String?> _getUserSexe() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+      if (userSnapshot.exists) {
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+        return userData['sexe'] as String?;
+      }
+    } catch (e) {
+      debugPrint(
+        'Erreur lors de la récupération du sexe de l\'utilisateur : $e',
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -287,15 +308,15 @@ class EventCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.max,
                 children: [
                   Flexible(child: _buildGroupsWidget()),
-                  StreamBuilder<QuerySnapshot>(
-                    stream:
+                  FutureBuilder<DocumentSnapshot>(
+                    future:
                         FirebaseFirestore.instance
-                            .collection('groups')
-                            .where('eventId', isEqualTo: event.id)
-                            .limit(1)
-                            .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                            .collection('users')
+                            .doc(FirebaseAuth.instance.currentUser!.uid)
+                            .get(),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const SizedBox(
                           width: 40,
                           child: Center(
@@ -307,78 +328,117 @@ class EventCard extends StatelessWidget {
                         );
                       }
 
-                      final hasGroups = (snapshot.data?.docs.length ?? 0) > 0;
+                      if (userSnapshot.hasError ||
+                          !userSnapshot.hasData ||
+                          !userSnapshot.data!.exists) {
+                        return const SizedBox(); // Ne rien afficher en cas d'erreur
+                      }
 
-                      return Row(
-                        children: [
-                          // Bouton "Créer"
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            child: OutlinedButton(
-                              onPressed: () => _navigateToCreateGroup(context),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                backgroundColor: Colors.transparent,
-                              ),
-                              child: const Text(
-                                'CRÉER',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ),
+                      final userData =
+                          userSnapshot.data!.data() as Map<String, dynamic>;
+                      final String userSexe = userData['sexe'] ?? 'inconnu';
 
-                          const SizedBox(
-                            width: 8,
-                          ), // Espacement entre les boutons
-                          // Bouton "Rejoindre"
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            child: OutlinedButton(
-                              onPressed:
-                                  hasGroups
-                                      ? () => _navigateToGroupsList(context)
-                                      : null, // Désactiver si aucun groupe
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                backgroundColor: Colors.transparent,
-                              ),
-                              child: const Text(
-                                'REJOINDRE',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  fontStyle: FontStyle.italic,
+                      return StreamBuilder<QuerySnapshot>(
+                        stream:
+                            FirebaseFirestore.instance
+                                .collection('groups')
+                                .where('eventId', isEqualTo: event.id)
+                                .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox(
+                              width: 40,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.green,
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
+                            );
+                          }
+
+                          final hasGroups =
+                              (snapshot.data?.docs.length ?? 0) > 0;
+
+                          return Row(
+                            children: [
+                              if (userSexe ==
+                                  'femme') // Afficher le bouton "Créer" uniquement pour les femmes
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        () => _navigateToCreateGroup(context),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      backgroundColor: Colors.transparent,
+                                    ),
+                                    child: const Text(
+                                      'CRÉER',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              const SizedBox(
+                                width: 8,
+                              ), // Espacement entre les boutons
+                              // Bouton "Rejoindre" (affiché pour tous les utilisateurs si des groupes existent)
+                              if (hasGroups ||
+                                  userSexe ==
+                                      'femme') // Afficher "Rejoindre" même si aucun groupe pour les femmes
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        hasGroups
+                                            ? () =>
+                                                _navigateToGroupsList(context)
+                                            : null, // Désactiver si aucun groupe
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      backgroundColor: Colors.transparent,
+                                    ),
+                                    child: const Text(
+                                      'REJOINDRE',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       );
                     },
                   ),

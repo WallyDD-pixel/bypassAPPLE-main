@@ -21,16 +21,17 @@ class NewPageForWomen extends StatelessWidget {
   Future<void> _sendJoinRequest(BuildContext context) async {
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid;
+      final documentId =
+          '$groupId-$userId'; // ID du document sous la forme groupId-userId
 
       // Vérifier si une demande existe déjà
       final existingRequest =
           await FirebaseFirestore.instance
               .collection('groupJoinRequests')
-              .where('groupId', isEqualTo: groupId)
-              .where('userId', isEqualTo: userId)
+              .doc(documentId)
               .get();
 
-      if (existingRequest.docs.isNotEmpty) {
+      if (existingRequest.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Vous avez déjà envoyé une demande pour ce groupe.'),
@@ -39,15 +40,34 @@ class NewPageForWomen extends StatelessWidget {
         return;
       }
 
+      // Récupérer le creatorId depuis la collection 'groups'
+      final groupSnapshot =
+          await FirebaseFirestore.instance
+              .collection('groups')
+              .doc(groupId)
+              .get();
+
+      if (!groupSnapshot.exists) {
+        throw Exception('Le groupe avec l\'ID $groupId n\'existe pas.');
+      }
+
+      final groupData = groupSnapshot.data() as Map<String, dynamic>;
+      final String creatorId = groupData['createdBy'] ?? '';
+
       // Ajouter une nouvelle demande dans Firestore
-      await FirebaseFirestore.instance.collection('groupJoinRequests').add({
-        'groupId': groupId,
-        'userId': userId,
-        'status': 'pending', // Statut initial de la demande
-        'eventId': eventId,
-        'createdAt':
-            FieldValue.serverTimestamp(), // Date et heure de la demande
-      });
+      await FirebaseFirestore.instance
+          .collection('groupJoinRequests')
+          .doc(documentId)
+          .set({
+            'groupId': groupId,
+            'userId': userId,
+            'creatorId': creatorId, // Ajouter le creatorId récupéré
+            'status': 'pending', // Statut initial de la demande
+            'eventId': eventId,
+            'sexe': 'femme', // Sexe de l'utilisateur
+            'createdAt':
+                FieldValue.serverTimestamp(), // Date et heure de la demande
+          });
 
       Navigator.of(
         context,
@@ -61,6 +81,10 @@ class NewPageForWomen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    final documentId =
+        '$groupId-$userId'; // ID du document sous la forme groupId-userId
+
     return Scaffold(
       body: Stack(
         children: [
@@ -129,7 +153,7 @@ class NewPageForWomen extends StatelessWidget {
                   future:
                       FirebaseFirestore.instance
                           .collection('groups')
-                          .doc(groupId)
+                          .doc(groupId) // Utiliser l'ID du document groupId
                           .get(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {

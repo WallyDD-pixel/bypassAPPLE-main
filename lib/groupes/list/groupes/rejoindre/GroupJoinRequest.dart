@@ -410,8 +410,7 @@ class GroupJoinRequest extends StatelessWidget {
                                   .collection('events')
                                   .doc(eventId)
                                   .get();
-                          final eventData =
-                              eventSnapshot.data();
+                          final eventData = eventSnapshot.data();
 
                           final location =
                               eventData?['location'] ?? 'Lieu inconnu';
@@ -509,7 +508,6 @@ class GroupJoinRequest extends StatelessWidget {
         'paymentIntentId': paymentIntentId, // Enregistrer le PaymentIntentId
         'status': 'pending', // Statut initial de la demande
         'createdAt': FieldValue.serverTimestamp(),
-        'scanqr': false,
       });
 
       print(

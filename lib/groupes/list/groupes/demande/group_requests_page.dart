@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:bypass/paiement/stripe_payment_service.dart';
 import 'accept_request_page.dart';
+import 'alternative.dart'; // Importez la page alternative
 import '../../../../couleur/background_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,107 +9,6 @@ class GroupRequestsPage extends StatelessWidget {
   final String groupId;
 
   const GroupRequestsPage({super.key, required this.groupId});
-
-  Future<void> _acceptRequest(String requestId, String userId) async {
-    try {
-      final groupRef = FirebaseFirestore.instance
-          .collection('groups')
-          .doc(groupId);
-
-      // Ajouter l'utilisateur au groupe
-      await groupRef.update({
-        'members.men': FieldValue.arrayUnion([
-          userId,
-        ]), // Ajout à la liste des membres
-      });
-
-      // Mettre à jour le statut de la demande
-      final requestRef = FirebaseFirestore.instance
-          .collection('groupJoinRequests')
-          .doc(requestId);
-      final requestSnapshot = await requestRef.get();
-      final requestData = requestSnapshot.data() as Map<String, dynamic>;
-
-      await requestRef.update({
-        'status': 'accepted', // Mettre le statut à "accepted"
-      });
-
-      // Capturer le paiement
-      final paymentIntentId = requestData['paymentIntentId'];
-      if (paymentIntentId != null) {
-        await StripeService.capturePayment(paymentIntentId);
-      }
-
-      // Calculer le montant net pour le créateur
-      final double price = requestData['price'] as double;
-      const double stripeFeePercentageEuropean =
-          1.4; // Frais Stripe pour les cartes européennes
-      const double stripeFeePercentageNonEuropean =
-          2.9; // Frais Stripe pour les cartes non européennes
-      const double stripeFixedFee = 0.25; // Frais fixes Stripe (en euros)
-      const double platformFeePercentage = 5.0; // Frais de la plateforme
-
-      // Supposons que vous détectez si la carte est européenne ou non
-      final bool isEuropeanCard = true; // Changez cette valeur selon le cas
-
-      // Calculer les frais Stripe
-      final double stripeFeePercentage =
-          isEuropeanCard
-              ? stripeFeePercentageEuropean
-              : stripeFeePercentageNonEuropean;
-
-      final double stripeFee =
-          (price * stripeFeePercentage / 100) + stripeFixedFee;
-
-      // Calculer les frais de la plateforme
-      final double platformFee = price * platformFeePercentage / 100;
-
-      // Calculer le montant net pour le créateur
-      final double netAmount = price - stripeFee - platformFee;
-
-      // Ajouter le montant net au champ "solde" du créateur
-      final creatorRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(requestData['creatorId']);
-
-      // Vérifier si le champ "solde" existe, sinon l'initialiser à 0
-      final creatorSnapshot = await creatorRef.get();
-      if (!creatorSnapshot.exists ||
-          !creatorSnapshot.data()!.containsKey('solde')) {
-        await creatorRef.set({'solde': 0}, SetOptions(merge: true));
-      }
-
-      // Ajouter le montant net au solde
-      await creatorRef.update({
-        'solde': FieldValue.increment(
-          netAmount,
-        ), // Ajouter le montant net au solde
-      });
-
-      // Récupérer les données du groupe
-      final groupSnapshot = await groupRef.get();
-      final groupData = groupSnapshot.data() as Map<String, dynamic>;
-
-      final maxMen = groupData['maxMen'] as int? ?? 0;
-      final maxWomen = groupData['maxWomen'] as int? ?? 0;
-
-      final members = groupData['members'] as Map<String, dynamic>? ?? {};
-      final menCount = (members['men'] as List?)?.length ?? 0;
-      final womenCount = (members['women'] as List?)?.length ?? 0;
-
-      // Calculer les places restantes
-      final remainingMen = maxMen - menCount;
-      final remainingWomen = maxWomen - womenCount;
-
-      // Mettre à jour le champ "status" dans la collection "groups"
-      await groupRef.update({
-        'status':
-            'Il reste $remainingMen place(s) pour les hommes et $remainingWomen place(s) pour les femmes',
-      });
-    } catch (e) {
-      print('Erreur lors de l\'acceptation de la demande : $e');
-    }
-  }
 
   Future<void> _rejectRequest(String requestId) async {
     try {
@@ -120,6 +19,58 @@ class GroupRequestsPage extends StatelessWidget {
           .delete();
     } catch (e) {
       print('Erreur lors du refus de la demande : $e');
+    }
+  }
+
+  Future<void> _handleAcceptRequest(
+    BuildContext context,
+    String requestId,
+    String userId,
+    double price,
+  ) async {
+    try {
+      // Récupérer les informations de l'utilisateur
+      final userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+      if (!userSnapshot.exists) {
+        throw Exception('Utilisateur introuvable');
+      }
+
+      final userData = userSnapshot.data() as Map<String, dynamic>;
+      final sexe = userData['sexe'] ?? 'unknown';
+
+      // Rediriger en fonction du sexe
+      if (sexe == 'femme') {
+        // Rediriger vers une autre page si l'utilisateur est une femme
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder:
+                (context) => AlternativePage(userId: userId, groupId: groupId),
+          ),
+        );
+      } else {
+        // Rediriger vers la page AcceptRequestPage pour les hommes
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder:
+                (context) => AcceptRequestPage(
+                  requestId: requestId,
+                  userId: userId,
+                  groupId: groupId,
+                  price: price,
+                ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Afficher un message d'erreur
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -140,18 +91,6 @@ class GroupRequestsPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                 decoration: const BoxDecoration(
                   color: Colors.transparent, // Fond transparent
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color.fromARGB(
-                        0,
-                        0,
-                        0,
-                        0,
-                      ), // Ombre pour un effet de profondeur
-                      offset: Offset(0, 2), // Décalage de l'ombre
-                      blurRadius: 4, // Flou de l'ombre
-                    ),
-                  ],
                 ),
                 child: Row(
                   children: [
@@ -169,7 +108,7 @@ class GroupRequestsPage extends StatelessWidget {
                     ),
                     // Texte de l'AppBar
                     Text(
-                      'DEMANDE EN ATTENTE',
+                      '📋 LISTE DES DEMANDES',
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 22,
@@ -181,36 +120,88 @@ class GroupRequestsPage extends StatelessWidget {
                 ),
               ),
 
-              // Contenu principal
+              // Explications dans une card
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  color: const Color.fromARGB(62, 13, 12, 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'ℹ️ Explications :',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '1️⃣ Si vous acceptez, l\'utilisateur sera ajouté au groupe et le paiement sera capturé.',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '2️⃣ Si vous refusez, la demande sera supprimée et aucun paiement ne sera effectué.',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Liste des demandes
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream:
                       FirebaseFirestore.instance
                           .collection('groupJoinRequests')
-                          .where('groupId', isEqualTo: groupId)
+                          .where(
+                            'groupId',
+                            isEqualTo: groupId,
+                          ) // Filtre par groupId
                           .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
+                      debugPrint(
+                        'Chargement des demandes pour le groupe : $groupId',
+                      );
                       return const Center(
                         child: CircularProgressIndicator(color: Colors.green),
                       );
                     }
 
                     if (snapshot.hasError) {
+                      debugPrint(
+                        'Erreur lors de la récupération des demandes : ${snapshot.error}',
+                      );
                       return const Center(
                         child: Text(
-                          'Une erreur est survenue',
+                          '❌ Une erreur est survenue',
                           style: TextStyle(color: Colors.red),
                         ),
                       );
                     }
 
                     final requests = snapshot.data?.docs ?? [];
+                    debugPrint(
+                      'Nombre de demandes récupérées pour le groupe $groupId : ${requests.length}',
+                    );
 
                     if (requests.isEmpty) {
+                      debugPrint(
+                        'Aucune demande trouvée pour le groupe $groupId.',
+                      );
                       return const Center(
                         child: Text(
-                          'Aucune demande pour ce groupe',
+                          '🤷‍♂️ Aucune demande pour ce groupe',
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                       );
@@ -221,7 +212,23 @@ class GroupRequestsPage extends StatelessWidget {
                       itemCount: requests.length,
                       itemBuilder: (context, index) {
                         final request = requests[index];
-                        final data = request.data() as Map<String, dynamic>;
+                        final data = request.data() as Map<String, dynamic>?;
+
+                        if (data == null) {
+                          debugPrint(
+                            'Les données de la demande sont nulles pour l\'index $index.',
+                          );
+                          return const Center(
+                            child: Text(
+                              '❌ Données de la demande introuvables',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          );
+                        }
+
+                        debugPrint(
+                          'Données de la demande à l\'index $index pour le groupe $groupId : $data',
+                        );
 
                         return FutureBuilder<DocumentSnapshot>(
                           future:
@@ -232,16 +239,34 @@ class GroupRequestsPage extends StatelessWidget {
                           builder: (context, userSnapshot) {
                             if (userSnapshot.connectionState ==
                                 ConnectionState.waiting) {
+                              debugPrint(
+                                'Chargement des données utilisateur pour l\'index $index...',
+                              );
                               return const Center(
                                 child: CircularProgressIndicator(),
                               );
                             }
 
-                            if (userSnapshot.hasError ||
-                                !userSnapshot.hasData) {
+                            if (userSnapshot.hasError) {
+                              debugPrint(
+                                'Erreur lors de la récupération des données utilisateur : ${userSnapshot.error}',
+                              );
                               return const Center(
                                 child: Text(
-                                  'Erreur lors du chargement des informations utilisateur',
+                                  '❌ Erreur lors du chargement des informations utilisateur',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              );
+                            }
+
+                            if (!userSnapshot.hasData ||
+                                !userSnapshot.data!.exists) {
+                              debugPrint(
+                                'Le document utilisateur n\'existe pas pour l\'index $index.',
+                              );
+                              return const Center(
+                                child: Text(
+                                  '❌ Utilisateur introuvable',
                                   style: TextStyle(color: Colors.red),
                                 ),
                               );
@@ -249,14 +274,52 @@ class GroupRequestsPage extends StatelessWidget {
 
                             final userData =
                                 userSnapshot.data!.data()
-                                    as Map<String, dynamic>;
+                                    as Map<String, dynamic>?;
+
+                            if (userData == null) {
+                              debugPrint(
+                                'Les données utilisateur sont nulles pour l\'index $index.',
+                              );
+                              return const Center(
+                                child: Text(
+                                  '❌ Les données utilisateur sont introuvables',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              );
+                            }
+
+                            debugPrint(
+                              'Données utilisateur récupérées pour l\'index $index : $userData',
+                            );
+
                             final userName =
                                 userData['username'] ?? 'Nom inconnu';
                             final userPhoto = userData['photoURL'];
+                            final sexe = userData['sexe'] ?? 'unknown';
+
+                            debugPrint('Nom utilisateur : $userName');
+                            debugPrint(
+                              'Photo utilisateur : ${userPhoto ?? "Aucune photo"}',
+                            );
+                            debugPrint('Sexe utilisateur : $sexe');
+
+                            // Déterminez le texte à afficher pour le sexe
+                            final sexeText =
+                                (sexe == 'homme')
+                                    ? 'Homme'
+                                    : (sexe == 'femme')
+                                    ? 'Femme'
+                                    : 'Genre inconnu';
+
+                            // Déterminez la couleur du statut
+                            final statusColor =
+                                (data['status'] == 'pending')
+                                    ? Colors.orange
+                                    : Colors.green;
 
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
-                              color: const Color.fromARGB(0, 33, 33, 33),
+                              color: const Color.fromARGB(62, 13, 12, 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -285,14 +348,14 @@ class GroupRequestsPage extends StatelessWidget {
                                           ),
                                         const SizedBox(width: 16),
 
-                                        // Nom de l'utilisateur
+                                        // Nom de l'utilisateur et sexe
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                userName,
+                                                '${userName[0].toUpperCase()}${userName.substring(1)}',
                                                 style: const TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 16,
@@ -301,13 +364,9 @@ class GroupRequestsPage extends StatelessWidget {
                                               ),
                                               const SizedBox(height: 8),
                                               Text(
-                                                'Statut : ${data['status']}',
-                                                style: TextStyle(
-                                                  color:
-                                                      data['status'] ==
-                                                              'pending'
-                                                          ? Colors.orange
-                                                          : Colors.green,
+                                                'Sexe : $sexeText',
+                                                style: const TextStyle(
+                                                  color: Colors.grey,
                                                   fontSize: 14,
                                                 ),
                                               ),
@@ -315,27 +374,6 @@ class GroupRequestsPage extends StatelessWidget {
                                           ),
                                         ),
                                       ],
-                                    ),
-                                    const SizedBox(height: 16),
-
-                                    // Explications
-                                    const Text(
-                                      'Explications :',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      '1. Si vous acceptez, l\'utilisateur sera ajouté au groupe et le paiement sera capturé.',
-                                      style: TextStyle(color: Colors.white70),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      '2. Si vous refusez, la demande sera supprimée et aucun paiement ne sera effectué.',
-                                      style: TextStyle(color: Colors.white70),
                                     ),
                                     const SizedBox(height: 16),
 
@@ -348,43 +386,39 @@ class GroupRequestsPage extends StatelessWidget {
                                           // Bouton Accepter
                                           ElevatedButton.icon(
                                             onPressed: () {
+                                              debugPrint(
+                                                'Bouton Accepter cliqué pour l\'index $index.',
+                                              );
                                               final double price =
                                                   (data['price'] as num?)
                                                       ?.toDouble() ??
-                                                  0.0; // Conversion sécurisée
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder:
-                                                      (
-                                                        context,
-                                                      ) => AcceptRequestPage(
-                                                        requestId: request.id,
-                                                        userId: data['userId'],
-                                                        groupId: groupId,
-                                                        price:
-                                                            price, // Passez ici un double valide
-                                                      ),
-                                                ),
+                                                  0.0;
+                                              _handleAcceptRequest(
+                                                context,
+                                                request.id,
+                                                data['userId'],
+                                                price,
                                               );
                                             },
                                             icon: const Icon(
                                               Icons.check,
                                               color: Colors.white,
                                             ),
-                                            label: const Text('Accepter'),
+                                            label: const Text('Accepter ✅'),
                                           ),
                                           // Bouton Refuser
                                           ElevatedButton.icon(
                                             onPressed: () {
-                                              _rejectRequest(
-                                                request.id,
-                                              ); // Appeler la méthode pour rejeter la demande
+                                              debugPrint(
+                                                'Bouton Refuser cliqué pour l\'index $index.',
+                                              );
+                                              _rejectRequest(request.id);
                                             },
                                             icon: const Icon(
                                               Icons.close,
                                               color: Colors.white,
                                             ),
-                                            label: const Text('Refuser'),
+                                            label: const Text('Refuser ❌'),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.red,
                                               padding:
@@ -401,7 +435,7 @@ class GroupRequestsPage extends StatelessWidget {
                                         ] else ...[
                                           // Message si la demande est déjà acceptée
                                           const Text(
-                                            'Demande déjà acceptée',
+                                            '✅ Demande déjà acceptée',
                                             style: TextStyle(
                                               color: Colors.green,
                                               fontSize: 16,

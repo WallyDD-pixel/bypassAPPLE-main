@@ -6,6 +6,7 @@ import '../../../../couleur/background_widget.dart';
 import '../../../../nav/custom_bottom_nav.dart';
 import 'mon_groupe.dart';
 import 'mes_attentes.dart';
+import 'groupesAccepter.dart';
 
 class Passerel extends StatefulWidget {
   const Passerel({super.key});
@@ -165,7 +166,7 @@ class _PasserelState extends State<Passerel> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24), // Espacement entre les cartes
+                  // Espacement entre les cartes
                   // Carte pour "Mes Demandes en Attente"
                   InkWell(
                     onTap: () {
@@ -240,6 +241,98 @@ class _PasserelState extends State<Passerel> {
                                     ),
                                     child: Text(
                                       '$pendingCount',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Ajout de la carte pour "Mes Groupes Acceptés"
+                  InkWell(
+                    onTap: () {
+                      // Action à effectuer lorsque la carte est cliquée
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder:
+                              (context) =>
+                                  const MesGroupesAcceptes(), // Remplacez par la page appropriée
+                        ),
+                      );
+                    },
+                    child: Card(
+                      color: Colors.black.withOpacity(
+                        0.4,
+                      ), // Fond semi-transparent
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 8,
+                      child: Container(
+                        height: 150, // Hauteur de la carte
+                        width:
+                            double
+                                .infinity, // Prendre toute la largeur disponible
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'MES GROUPES ACCEPTÉS'
+                                    .toUpperCase(), // Texte en majuscules
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 22, // Taille du texte
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle:
+                                      FontStyle.italic, // Texte en italique
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Bulle pour afficher le nombre de groupes acceptés
+                              StreamBuilder<QuerySnapshot>(
+                                stream:
+                                    FirebaseFirestore.instance
+                                        .collection('groupJoinRequests')
+                                        .where('userId', isEqualTo: userId)
+                                        .where('status', isEqualTo: 'accepted')
+                                        .snapshots(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    );
+                                  }
+
+                                  if (snapshot.hasError) {
+                                    return const Text(
+                                      'Erreur',
+                                      style: TextStyle(color: Colors.red),
+                                    );
+                                  }
+
+                                  final int acceptedCount =
+                                      snapshot.data?.docs.length ?? 0;
+
+                                  return Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '$acceptedCount',
                                       style: GoogleFonts.poppins(
                                         color: Colors.white,
                                         fontSize: 16,

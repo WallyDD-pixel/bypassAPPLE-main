@@ -23,11 +23,19 @@ class _MonGroupeState extends State<MonGroupe> {
   Future<List<Map<String, dynamic>>> _fetchAllGroupAndEventDetails(
     List<QueryDocumentSnapshot> requests,
   ) async {
+    final seenGroupIds = <String>{}; // Utilisez un Set pour éviter les doublons
+
     return Future.wait(
       requests.map((request) async {
         final data = request.data() as Map<String, dynamic>;
         final groupId = data['groupId'];
         final eventId = data['eventId'];
+
+        // Vérifiez si le groupId a déjà été traité
+        if (seenGroupIds.contains(groupId)) {
+          return null; // Ignorez les doublons
+        }
+        seenGroupIds.add(groupId);
 
         final groupSnapshot =
             await FirebaseFirestore.instance
@@ -49,6 +57,12 @@ class _MonGroupeState extends State<MonGroupe> {
           'requestData': data,
         };
       }),
+    ).then(
+      (results) =>
+          results
+              .where((item) => item != null)
+              .cast<Map<String, dynamic>>()
+              .toList(),
     );
   }
 
@@ -298,17 +312,52 @@ class _MonGroupeState extends State<MonGroupe> {
                                         ],
                                       ),
 
-                                      // Statut
                                       Text(
-                                        'Statut : ${groupDetails['status'] ?? 'Statut inconnu'}',
-                                        style: GoogleFonts.poppins(
+                                        () {
+                                          final int maxMen =
+                                              groupDetails['maxMen'] ?? 0;
+                                          final int maxWomen =
+                                              groupDetails['maxWomen'] ?? 0;
+
+                                          final List<dynamic> men =
+                                              groupDetails['members']['men'] ??
+                                              [];
+                                          final List<dynamic> women =
+                                              groupDetails['members']['women'] ??
+                                              [];
+
+                                          final int currentMen = men.length;
+                                          final int currentWomen = women.length;
+
+                                          if (currentMen >= maxMen &&
+                                              currentWomen >= maxWomen) {
+                                            return 'Statut : Groupe complet';
+                                          } else if (currentMen < maxMen &&
+                                              currentWomen < maxWomen) {
+                                            final int remainingMen =
+                                                maxMen - currentMen;
+                                            final int remainingWomen =
+                                                maxWomen - currentWomen;
+                                            return 'Statut : $remainingMen homme(s) et $remainingWomen femme(s) requis';
+                                          } else if (currentMen < maxMen) {
+                                            final int remainingMen =
+                                                maxMen - currentMen;
+                                            return 'Statut : $remainingMen homme(s) requis';
+                                          } else if (currentWomen < maxWomen) {
+                                            final int remainingWomen =
+                                                maxWomen - currentWomen;
+                                            return 'Statut : $remainingWomen femme(s) requis';
+                                          } else {
+                                            return 'Statut : Statut inconnu';
+                                          }
+                                        }(),
+                                        style: const TextStyle(
                                           color:
-                                              groupDetails['status'] ==
-                                                      'pending'
-                                                  ? Colors.orange
-                                                  : Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
+                                              Colors
+                                                  .orange, // Couleur par défaut
+                                          fontSize:
+                                              18, // Augmenté pour le statut
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                       const SizedBox(height: 8),
